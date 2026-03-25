@@ -343,7 +343,7 @@ dc d2 c4 76 86 d6 8a
 While reviewing beaconing traffic I noticed a sudden size change:
 ```
 Normal beacons:   74 bytes POST   ← heartbeat
-Packet 8131:    5815 bytes POST   ← command output
+Packet 8131:    5815 bytes POST   ← command 
 ```
 
 #### CyberChef Setup
