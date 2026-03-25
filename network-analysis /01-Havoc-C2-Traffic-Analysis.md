@@ -238,3 +238,100 @@ Filter: http && ip.addr == 10.0.0.155 && ip.addr == 10.0.0.156
 Machine precision. Every 2 seconds. This is what active C2 looks like on a network.
 
 ---
+### Step 6 — Identifying the C2 Framework
+
+I examined the raw bytes of the first POST request:
+
+> <img width="613" height="203" alt="8m" src="https://github.com/user-attachments/assets/a5b25d60-c92d-4df9-ad69-ce45b0eded19" />
+
+
+
+```
+... e5 de ad be ef 08 75 ...
+```
+
+The magic bytes **`DE AD BE EF`** — `0xDEADBEEF`.
+
+I checked the Havoc C2 source code on GitHub:
+```
+Havoc C2 Repository → payloads/Demon/include/Defines.h
+```
+
+> <img width="402" height="407" alt="9m" src="https://github.com/user-attachments/assets/ca8d0f5c-33ca-4a8b-8c5e-5365a1d25de2" />
+
+```c
+#define DEMON_MAGIC_VALUE   0xDEADBEEF
+```
+
+**Perfect match. C2 framework confirmed: Havoc C2 — Demon Agent.**
+
+#### What Is Havoc C2?
+
+| Feature | Detail |
+|---|---|
+| Agent | Demon — compiled Windows PE |
+| Communication | HTTP / HTTPS / SMB |
+| Encryption | AES with CTR mode — per session keys |
+| Magic bytes | `0xDEADBEEF` in every packet |
+| Evasion | Sleep masking, AMSI bypass, ETW patching |
+
+---
+
+### Step 7 — AES Key and IV Extraction
+
+#### Understanding AES Key and IV
+
+**AES Key:** The secret cryptographic key used to encrypt and decrypt all C2 communication. In Havoc C2 this key is embedded in the implant at compile time.
+
+**IV (Initialization Vector):** A random value used alongside the AES key to ensure identical plaintext messages produce different ciphertext. Without it, patterns in encrypted traffic become visible.
+
+**Why they matter:** Without the AES key and IV, all POST request data appears as random bytes. Extracting these values allows us to decrypt the C2 traffic and reveal exactly what commands were sent.
+
+#### Havoc C2 Packet Structure
+```
+Find DEADBEEF → skip 12 bytes → next 32 bytes = AES Key → next 16 bytes = IV
+```
+
+#### Extraction Process
+
+I selected packet 6418, copied the bytes as a Hex Dump, and pasted into Notepad:
+
+> <img width="526" height="326" alt="8mm" src="https://github.com/user-attachments/assets/4401580f-b5d1-4917-ab8a-75ea4981040c" />
+> <img width="564" height="375" alt="14" src="https://github.com/user-attachments/assets/4989f492-95e7-428d-8fa2-755972902a69" />
+**Locate magic bytes:**
+```
+... e5 de ad be ef ...
+```
+
+**Skip 12 bytes after DEADBEEF:**
+```
+08 75 c2 54 00 00 63 00 00 00 00 08   ← skip these
+```
+
+**Next 32 bytes = AES Key:**
+```
+da 26 84 0e c4 d8 c2 3e 32 5e ea e6
+ea e6 48 f6 5a 2c d0 48 50 6e 64 32
+dc d2 c4 76 86 d6 8a 9a
+```
+
+> <img width="498" height="387" alt="13" src="https://github.com/user-attachments/assets/62160f8a-3805-41e5-ba47-44bce9ef1d2e" />
+
+
+
+
+**Next 16 bytes = AES IV:**
+```
+f8 84 b0 68 dc 38 d0 2c a6 b2 ca 2c 8e 96 82 8f
+```
+
+> <img width="534" height="355" alt="155" src="https://github.com/user-attachments/assets/984763fd-2468-4d86-9897-c9a61b472ab3" />
+
+
+| Parameter | Value |
+|---|---|
+| **AES Key** | `da26840ec4d8c23e325eeae6eae648f65a2cd048506e6432dcd2c47686d68a9a` |
+| **AES IV** | `9af884b068dc38d02ca6b2ca2c8e9682` |
+| **Mode** | CTR — confirmed in Havoc AesCrypt.h |
+
+---
