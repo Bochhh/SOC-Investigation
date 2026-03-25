@@ -335,3 +335,59 @@ dc d2 c4 76 86 d6 8a
 | **Mode** | CTR — confirmed in Havoc AesCrypt.h |
 
 ---
+### Step 8 — Decrypting C2 Communications
+
+#### The Suspicious Packet
+> <img width="615" height="376" alt="10mm" src="https://github.com/user-attachments/assets/4343aec7-481b-44fb-92c4-46064a317cef" />
+
+While reviewing beaconing traffic I noticed a sudden size change:
+```
+Normal beacons:   74 bytes POST   ← heartbeat
+Packet 8131:    5815 bytes POST   ← command output
+```
+
+#### CyberChef Setup
+
+> <img width="1092" height="579" alt="18" src="https://github.com/user-attachments/assets/af407a44-bcac-42b5-9a37-f881a573dd21" />
+
+I copied the HTTP data value from packet 8131 and set up CyberChef:
+```
+Recipe:  AES Decrypt
+Key:     da26840ec4d8c23e325eeae6eae648f65a2cd048506e6432dcd2c47686d68a9a
+IV:      9af884b068dc38d02ca6b2ca2c8e9682
+Mode:    CTR
+Input:   Hex
+Output:  Raw
+```
+#### Why CTR Mode?
+
+Havoc C2 uses **CTR (Counter) block cipher mode** confirmed in `AesCrypt.h`:
+```
+AES-CTR turns AES into a stream cipher
+→ Each block encrypted with a unique counter
+→ No padding required
+→ Ideal for network communication
+```
+
+Initial output showed garbage at the beginning — the input contains Havoc packet headers. Fix: remove exactly **20 bytes (40 hex characters)** from the beginning of the input.
+
+> <img width="511" height="523" alt="19" src="https://github.com/user-attachments/assets/ac4fb492-78a1-438a-a1c5-7c0d08f00a42" />
+
+
+**The decrypted content:**
+```
+UserName                     SID
+========                     ============================
+ATTACKDEFENSE\Administrator  S-1-5-21-3688751335-3073641799-161370460-500
+
+GROUP INFORMATION             Type               SID
+=================             ====               ===
+ATTACKDEFENSE\None            Group              S-1-5-21-...
+Everyone                      Well-Known group   ...
+```
+
+**This is the output of `whoami /all`.**
+
+The attacker confirmed they were running as **ATTACKDEFENSE\Administrator** — full administrative access on the compromised system.
+
+---
