@@ -305,14 +305,14 @@ I selected packet 6418, copied the bytes as a Hex Dump, and pasted into Notepad:
 
 **Skip 12 bytes after DEADBEEF:**
 ```
-08 75 c2 54 00 00 63 00 00 00 00 08   ← skip these
+08 75 c2 54 00 00 63 00 00 00 00  ← skip these
 ```
 
 **Next 32 bytes = AES Key:**
 ```
-da 26 84 0e c4 d8 c2 3e 32 5e ea e6
+08 da 26 84 0e c4 d8 c2 3e 32 5e ea e6
 ea e6 48 f6 5a 2c d0 48 50 6e 64 32
-dc d2 c4 76 86 d6 8a 9a
+dc d2 c4 76 86 d6 8a 
 ```
 
 > <img width="498" height="387" alt="13" src="https://github.com/user-attachments/assets/62160f8a-3805-41e5-ba47-44bce9ef1d2e" />
@@ -322,7 +322,7 @@ dc d2 c4 76 86 d6 8a 9a
 
 **Next 16 bytes = AES IV:**
 ```
-f8 84 b0 68 dc 38 d0 2c a6 b2 ca 2c 8e 96 82 8f
+9a f8 84 b0 68 dc 38 d0 2c a6 b2 ca 2c 8e 96 82 
 ```
 
 > <img width="534" height="355" alt="155" src="https://github.com/user-attachments/assets/984763fd-2468-4d86-9897-c9a61b472ab3" />
@@ -330,7 +330,7 @@ f8 84 b0 68 dc 38 d0 2c a6 b2 ca 2c 8e 96 82 8f
 
 | Parameter | Value |
 |---|---|
-| **AES Key** | `da26840ec4d8c23e325eeae6eae648f65a2cd048506e6432dcd2c47686d68a9a` |
+| **AES Key** | `08da26840ec4d8c23e325eeae6eae648f65a2cd048506e6432dcd2c47686d68a` |
 | **AES IV** | `9af884b068dc38d02ca6b2ca2c8e9682` |
 | **Mode** | CTR — confirmed in Havoc AesCrypt.h |
 
