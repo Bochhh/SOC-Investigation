@@ -391,3 +391,116 @@ Everyone                      Well-Known group   ...
 The attacker confirmed they were running as **ATTACKDEFENSE\Administrator** — full administrative access on the compromised system.
 
 ---
+## ⏱️ Complete Attack Timeline
+```
+11:55:02  →  checkmate.exe compiled on staging server (10.0.0.155)
+11:57:52  →  PowerShell on victim downloads checkmate.exe
+11:57:52  →  checkmate.exe executed on victim (10.0.0.156)
+11:58:07  →  Registration beacon sent (287 bytes)
+             Victim registers: hostname, user, OS, IP
+11:58:08  →  C2 acknowledges — session established
+11:58:XX  →  Regular 2-second beaconing begins
+~108s     →  C2 sends encrypted command to victim
+~108s     →  Victim executes whoami /all
+~108s     →  Output returned to C2 
+             ATTACKDEFENSE\Administrator confirmed
+             Full administrative access achieved
+```
+
+---
+
+## 🧩 IOCs — Indicators of Compromise
+
+| Type | Value |
+|---|---|
+| **Victim IP** | `10.0.0.156` |
+| **Internal Staging Server** | `10.0.0.155:8000` |
+| **External C2 IP** | `185.53.179.200` |
+| **Fingerprinting Server** | `208.91.196.46` |
+| **Malware Filename** | `checkmate.exe` |
+| **Malware MD5** | `55DF2A3DD566B967E5F5141936724C7B` |
+| **Malware Size** | 99,328 bytes |
+| **C2 Magic Bytes** | `0xDEADBEEF` |
+| **AES Key** | `da26840ec4d8c23e325eeae6eae648f65a2cd048506e6432dcd2c47686d68a9a` |
+| **AES IV** | `9af884b068dc38d02ca6b2ca2c8e9682` |
+| **Beacon Interval** | 2 seconds |
+| **Staging Server** | Python SimpleHTTP/0.6 on port 8000 |
+| **Compromised Account** | `ATTACKDEFENSE\Administrator` |
+
+---
+
+## 🗺️ MITRE ATT&CK Mapping
+
+| Phase | Technique | ID | Evidence |
+|---|---|---|---|
+| Execution | PowerShell | T1059.001 | PowerShell User-Agent downloading payload |
+| Defense Evasion | Obfuscated Files | T1027 | AES-CTR encrypted C2 traffic |
+| Discovery | System Owner/User Discovery | T1033 | whoami /all executed |
+| Lateral Movement | Lateral Tool Transfer | T1570 | 10.0.0.155 internal staging server |
+| C2 | Application Layer Protocol: Web | T1071.001 | HTTP POST beaconing |
+| C2 | Non-Standard Port | T1571 | Port 8000 payload delivery |
+| C2 | Encrypted Channel | T1573 | AES-CTR encrypted communications |
+| Exfiltration | Exfiltration Over C2 Channel | T1041 | Command output via POST |
+| Ingress | Ingress Tool Transfer | T1105 | checkmate.exe delivered via HTTP |
+
+---
+
+## 💡 Key Lessons Learned
+
+**1 — Magic Bytes Never Lie**
+`0xDEADBEEF` is hardcoded in Havoc's source code and appears in every single packet. Knowing framework signatures allows instant identification without waiting for AV detection — which here found nothing.
+
+**2 — VirusTotal Clean Does Not Mean Safe**
+`checkmate.exe` returned zero detections. Custom compiled 2 minutes before delivery. Never trust a clean VirusTotal result for a suspicious file found during network investigation.
+
+**3 — Response Size Is Evidence**
+```
+74 bytes    = heartbeat
+5815 bytes  = command output
+```
+Size anomalies reveal when commands executed and output returned — before you even decrypt anything.
+
+**4 — Internal IPs Can Be Attackers**
+`10.0.0.155` looked like a legitimate internal server. It was a compromised staging machine. Never trust internal traffic by default.
+
+**5 — Encryption Does Not Stop Analysis**
+The entire C2 communication was AES encrypted. We still identified the framework, extracted the keys, and decrypted every command. Encryption hides content — not structure, timing, or behavior.
+
+---
+
+## 🔧 Recommendations
+
+| Priority | Action |
+|---|---|
+| 🔴 Critical | Isolate 10.0.0.156 — active C2 connection |
+| 🔴 Critical | Isolate 10.0.0.155 — confirmed staging server |
+| 🔴 Critical | Reset ATTACKDEFENSE\Administrator credentials |
+| 🟠 High | Conduct memory forensics on 10.0.0.156 |
+| 🟠 High | Hunt for checkmate.exe across all endpoints |
+| 🟠 High | Block MD5: 55DF2A3DD566B967E5F5141936724C7B in EDR |
+| 🟠 High | Audit all PowerShell download activity |
+| 🟡 Medium | Implement beaconing detection — fixed interval POST requests |
+| 🟡 Medium | Block outbound connections to port 8000 from internal hosts |
+| 🟢 Low | Investigate how 10.0.0.155 was initially compromised |
+
+---
+
+## ✅ Conclusion
+
+Through systematic packet analysis of `mal01.pcapng`, we successfully reconstructed a complete attack chain — from initial payload delivery to confirmed administrative access on the victim machine.
+
+> *The traffic was encrypted. The framework was unknown. The file was clean on VirusTotal.*
+> *None of it mattered — the evidence was always there.*
+
+---
+
+## 📚 References
+
+| Resource | Link |
+|---|---|
+| Havoc C2 GitHub | [github.com/HavocFramework](https://github.com/HavocFramework/Havoc) |
+| MITRE ATT&CK | [attack.mitre.org](https://attack.mitre.org) |
+| CyberChef | [gchq.github.io/CyberChef](https://gchq.github.io/CyberChef/) |
+| VirusTotal | [virustotal.com](https://www.virustotal.com) |
+
+---
