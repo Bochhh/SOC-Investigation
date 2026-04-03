@@ -299,4 +299,53 @@ Temp directories are commonly used for staging because they are writable
 by all users and often excluded from antivirus scanning.
 
 ---
+### Step 7 — Firewall Correlation: System Response
 
+The final step was correlating the attacker's timeline with the system
+administrator's containment response using **Sysmon Event ID 13** —
+Registry Value Set — since Windows Firewall rules are stored in the registry.
+
+**Splunk query:**
+```splunk
+source="sysmon.json" host="ip-172-31-1-116.us-east-2.compute.internal"
+sourcetype="_json" "Event.System.EventID"=13 "FirewallPolicy"
+| table Event.System.TimeCreated.#attributes.SystemTime,
+  Event.EventData.Details, Event.EventData.TargetObject, Event.EventData.Image
+| uniq
+```
+
+>  <img width="1072" height="263" alt="8" src="https://github.com/user-attachments/assets/f05d86d3-d88c-4c41-843e-0832de524d63" />
+
+
+> <img width="941" height="460" alt="9" src="https://github.com/user-attachments/assets/a97fa783-df15-468a-97d4-aa88cb14db4b" />
+
+```
+Time:         2024-06-06T09:46:03Z
+Event Type:   SetValue
+Image:        C:\Windows\system32\svchost.exe
+TargetObject: HKLM\System\CurrentControlSet\Services\SharedAccess\
+              Parameters\FirewallPolicy\FirewallRules\{06FFAC87-...}
+Details:      v2.30|Action=Block|Active=TRUE|Dir=Out|RA4=13.232.55.12|Name=secevent1|
+User:         NT AUTHORITY\LOCAL SERVICE
+```
+
+Firewall rule breakdown:
+```
+Action=Block     ← blocking traffic
+Active=TRUE      ← rule is live
+Dir=Out          ← outbound connections
+RA4=13.232.55.12 ← blocking the C2 IP specifically
+Name=secevent1   ← rule created by the administrator
+```
+
+The containment happened at **09:46:03** — approximately **18 minutes**
+after the trojan first executed at 09:28:07. That 18-minute window is
+where all attacker activity occurred.
+
+> **🔍 Why Event ID 13 for firewall correlation?**
+> Windows Firewall rules are stored in the registry. When an administrator
+> adds a rule, it writes to HKLM\...\FirewallPolicy — which Sysmon logs
+> as Event ID 13. This lets us pinpoint exactly when containment happened
+> relative to the attacker's activity timeline.
+
+---
