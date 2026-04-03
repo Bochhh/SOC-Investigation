@@ -349,3 +349,125 @@ where all attacker activity occurred.
 > relative to the attacker's activity timeline.
 
 ---
+## ⏱️ Complete Attack Timeline
+```
+June 6, 2024
+
+09:24:18  →  application_form.pdf.exe downloaded via Microsoft Edge
+              Zone.Identifier confirms internet origin
+09:28:07  →  User double-clicked file — trojan executed (parent: Explorer.exe)
+09:28:55  →  cmd.exe spawned by trojan
+09:28:59  →  whoami — attacker checks privileges
+09:29:22  →  tasklist — attacker enumerates processes
+09:31:57  →  net user jumpadmin U7gk54skuvhs@1 /add — backdoor account created
+09:32:07  →  net user — attacker verifies account creation
+09:40:46  →  powershell.exe launched via cmd.exe
+09:40:47  →  PowerShell script policy test files dropped in Temp
+09:41:44  →  tmp.ps1 created in C:\Windows\Temp
+09:42:08  →  powershell.exe -ep bypass — execution policy bypassed
+
+[SOC RESPONSE — 18 minutes after initial execution]
+09:46:03  →  Firewall rule created: Block outbound to 13.232.55.12
+              C2 communication cut off
+```
+
+---
+
+## 🧩 IOCs — Indicators of Compromise
+
+| Type | Value |
+|---|---|
+| **Malicious File** | application_form.pdf.exe |
+| **File Path** | C:\Users\LetsDefend\Downloads\application_form.pdf.exe |
+| **C2 IP** | 13.232.55.12 |
+| **C2 Port** | 30 |
+| **Delivery** | Browser download via msedge.exe |
+| **Backdoor Account** | jumpadmin |
+| **Backdoor Password** | U7gk54skuvhs@1 |
+| **PS Script** | C:\Windows\Temp\tmp.ps1 |
+| **Execution Flag** | powershell.exe -ep bypass |
+| **Firewall Rule** | secevent1 — Block outbound to 13.232.55.12 |
+
+---
+
+## 🗺️ MITRE ATT&CK Mapping
+
+| Tactic | Technique | ID | Evidence |
+|---|---|---|---|
+| Initial Access | Drive-by Download | T1189 | File downloaded via browser |
+| Execution | User Execution: Malicious File | T1204.002 | User double-clicked the trojan |
+| Execution | Windows Command Shell | T1059.003 | cmd.exe spawned by trojan |
+| Execution | PowerShell | T1059.001 | powershell.exe -ep bypass |
+| Defense Evasion | Masquerading | T1036 | Double extension .pdf.exe |
+| Discovery | System Owner/User Discovery | T1033 | whoami executed |
+| Discovery | Process Discovery | T1057 | tasklist executed |
+| Persistence | Create Account | T1136.001 | net user jumpadmin /add |
+| C2 | Application Layer Protocol | T1071 | Outbound to 13.232.55.12:30 |
+| C2 | Non-Standard Port | T1571 | Port 30 — uncommon C2 port |
+
+---
+
+## 💡 Key Lessons Learned
+
+**1 — Double Extensions Are Always Suspicious**
+`application_form.pdf.exe` appeared as `application_form.pdf`. Enabling "Show file extensions" via GPO is a simple control that would have made this visible before execution.
+
+**2 — Non-Standard Ports Signal Custom C2**
+Port 30 has no legitimate common use. Any outbound connection on an unusual port from a user workstation deserves immediate investigation.
+
+**3 — whoami + tasklist = Active Post-Exploitation**
+Seeing these two commands executed in rapid succession from a suspicious parent is a reliable behavioral indicator of an attacker performing reconnaissance after gaining a shell.
+
+**4 — Backdoor Accounts Hide in Plain Sight**
+`jumpadmin` was named to blend with legitimate admin accounts. Regular audits of local users and alerting on `net user /add` outside approved change windows are essential controls.
+
+**5 — 18 Minutes Is Too Long**
+The attacker created a backdoor account, ran reconnaissance, and dropped PowerShell scripts in 18 minutes. Automated containment triggered by behavioral rules would have shortened this window significantly.
+
+---
+
+## 🔧 Recommendations
+
+| Priority | Action |
+|---|---|
+| 🔴 Critical | Block 13.232.55.12 at perimeter firewall |
+| 🔴 Critical | Disable and delete backdoor account: jumpadmin |
+| 🔴 Critical | Isolate affected host for forensic investigation |
+| 🔴 Critical | Delete application_form.pdf.exe and all PS scripts |
+| 🟠 High | Hunt for jumpadmin account across the entire environment |
+| 🟠 High | Review C:\Windows\Temp\tmp.ps1 contents |
+| 🟠 High | Reset LetsDefend user credentials |
+| 🟡 Medium | Enable "Show file extensions" via GPO |
+| 🟡 Medium | Alert on outbound connections to non-standard ports |
+| 🟡 Medium | Implement PowerShell Constrained Language Mode |
+| 🟢 Low | Investigate how user was directed to download the file |
+
+---
+
+## ✅ Conclusion
+```
+Verdict:   TRUE POSITIVE ✅
+Malware:   Trojan with active C2 capability
+Host:      ip-172-31-13-20.us-east-2.compute.internal
+User:      LetsDefend
+C2:        13.232.55.12:30
+Window:    18 minutes of active attacker access
+Status:    C2 blocked — backdoor account created — PS scripts dropped
+```
+
+> *The attacker was inside for 18 minutes.*
+> *In those 18 minutes: shell, recon, backdoor account, PowerShell.*
+> *The file was called application_form.pdf.*
+> *All it needed was one double-click.*
+
+---
+
+## 📚 References
+
+| Resource | Link |
+|---|---|
+| MITRE ATT&CK | [attack.mitre.org](https://attack.mitre.org) |
+| Sysmon Event ID Reference | [docs.microsoft.com](https://docs.microsoft.com/en-us/sysinternals/downloads/sysmon) |
+| Splunk Documentation | [docs.splunk.com](https://docs.splunk.com) |
+
+---
