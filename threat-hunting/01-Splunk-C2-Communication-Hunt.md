@@ -192,4 +192,111 @@ cmd.exe (command shell spawned)
 > Process Creation gives us the full parent-child relationship. `cmd.exe` spawned by a file from the Downloads folder is an immediate red flag. Legitimate PDF files do not open command prompts.
 
 ---
+### Step 4 — Attacker Commands: What Did cmd.exe Run?
+
+I expanded to find all commands executed through `cmd.exe`.
+
+**Splunk query:**
+```splunk
+source="sysmon.json" host="ip-172-31-13-20.us-east-2.compute.internal"
+sourcetype="_json" "Event.System.EventID"=1 "cmd.exe"
+| table Event.EventData.UtcTime, Event.EventData.CommandLine,
+  Event.EventData.ParentCommandLine
+```
+
+> <img width="1186" height="396" alt="4" src="https://github.com/user-attachments/assets/81465b0e-1499-429a-9a9e-82b44be8f7b6" />
+
+
+| Time | Command | Purpose |
+|---|---|---|
+| 09:28:55 | `cmd.exe` spawned | Shell opened by trojan |
+| 09:28:59 | `whoami` | Check current user and privileges |
+| 09:29:22 | `tasklist` | Enumerate running processes |
+| 09:40:46 | `powershell.exe` | Upgrade to PowerShell for advanced capabilities |
+
+This is a textbook **post-exploitation reconnaissance sequence:**
+```
+Get a shell → check who I am → enumerate processes → upgrade to PowerShell
+```
+
+---
+
+### Step 5 — Persistence: New User Created
+
+I hunted for `net user` commands to check if the attacker created a backdoor account.
+
+**Splunk query:**
+```splunk
+source="sysmon.json" host="ip-172-31-13-20.us-east-2.compute.internal"
+sourcetype="_json" "Event.System.EventID"=1 "net"
+| table Event.EventData.UtcTime, Event.EventData.CommandLine,
+  Event.EventData.ParentCommandLine
+```
+
+> <img width="1172" height="319" alt="5" src="https://github.com/user-attachments/assets/7a6953b5-4717-4ad4-b39f-84acd62a2566" />
+
+```
+2024-06-06 09:31:57  net user jumpadmin U7gk54skuvhs@1 /add
+2024-06-06 09:32:07  net user   ← verifying the account was created
+```
+
+**Persistence confirmed:**
+```
+Username:  jumpadmin
+Password:  U7gk54skuvhs@1
+```
+
+The username `jumpadmin` is deliberately chosen to blend with legitimate administrator accounts — a common technique to avoid suspicion during a casual review of user accounts.
+
+---
+
+### Step 6 — PowerShell Activity: Scripts Dropped
+
+I investigated what PowerShell did after being launched by `cmd.exe`.
+
+**Splunk query — files created by PowerShell (Event ID 11):**
+```splunk
+source="sysmon.json" host="ip-172-31-13-20.us-east-2.compute.internal"
+sourcetype="_json" "Event.System.EventID"=11 "powershell.exe"
+| table Event.System.TimeCreated.#attributes.SystemTime,
+  Event.EventData.TargetFilename, Event.EventData.Image
+```
+> <img width="1213" height="427" alt="6" src="https://github.com/user-attachments/assets/14b34936-6d34-44ef-8d3d-d2b723b3a638" />
+
+```
+2024-06-06T09:40:47Z  C:\Users\LetsDefend\AppData\Local\Temp\__PSScriptPolicyTest_i4gtmd03.cxz.ps1
+2024-06-06T09:41:44Z  C:\Windows\Temp\tmp.ps1
+2024-06-06T09:42:08Z  C:\Users\LetsDefend\AppData\Local\Temp\__PSScriptPolicyTest_kzd5gc12.vcd.ps1
+```
+
+**Splunk query — PowerShell command line (Event ID 1):**
+```splunk
+source="sysmon.json" host="ip-172-31-13-20.us-east-2.compute.internal"
+sourcetype="_json" "Event.System.EventID"=1 "powershell.exe"
+| table Event.System.TimeCreated.#attributes.SystemTime, Event.EventData.CommandLine
+```
+
+> <img width="1174" height="315" alt="7" src="https://github.com/user-attachments/assets/5c3e94e7-260a-4d0b-8ef5-e9e98d08640c" />
+
+```
+2024-06-06T09:42:08Z
+"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe" -ep bypass
+```
+
+**Two findings:**
+
+**1 — Execution Policy Bypass**
+```
+-ep bypass → ignores system script execution policy
+→ Allows unsigned malicious scripts to run without restriction
+```
+
+**2 — Scripts Dropped in Temp**
+```
+C:\Windows\Temp\tmp.ps1  ← unknown payload — contents require forensic review
+```
+Temp directories are commonly used for staging because they are writable
+by all users and often excluded from antivirus scanning.
+
+---
 
