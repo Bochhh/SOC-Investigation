@@ -51,7 +51,7 @@ The objective was to use Splunk to correlate logs, validate each alert, and piec
 | Sysmon Event ID 11 | File creation — malicious files dropped |
 | Sysmon Event ID 13 | Registry modification — persistence |
 | Windows PowerShell Event 800 | Pipeline execution — download commands |
-| Windows Security Event 4733 | Group membership removal |
+| Windows Security Event 4726 | Group membership removal |
 
 ---
 
