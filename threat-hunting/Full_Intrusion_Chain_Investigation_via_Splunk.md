@@ -216,7 +216,7 @@ the remote PowerShell session using `Invoke-WebRequest`.
 Fourteen seconds after dropping `gotyou.exe`, the attacker executed it.
 I hunted **Sysmon Event ID 1** to capture the process creation.
 
-> <img width="1358" height="411" alt="m16" src="https://github.com/user-attachments/assets/6d357940-b417-4c65-901f-98fb2733acda" />
+> <img width="1064" height="522" alt="66" src="https://github.com/user-attachments/assets/4e2f7b03-0136-4579-8454-bcf7353655b5" />
 
 
 
@@ -272,7 +272,7 @@ The true identity of any binary is always in the PE header, not the filename.
 To confirm exactly how Mimikatz accessed LSASS memory, I hunted
 **Sysmon Event ID 10** — Process Access:
 
-> <img width="1064" height="522" alt="66" src="https://github.com/user-attachments/assets/4e2f7b03-0136-4579-8454-bcf7353655b5" />
+> <img width="1358" height="411" alt="m16" src="https://github.com/user-attachments/assets/6d357940-b417-4c65-901f-98fb2733acda" />
 
 ```
 Time:          2026-02-10 11:48:52
