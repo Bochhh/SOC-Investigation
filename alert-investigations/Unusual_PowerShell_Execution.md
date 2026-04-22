@@ -214,8 +214,122 @@ Ports:       80 (HTTP), 8080 (stager), 4444 (reverse shell)
 Time:        11:21:35 → 11:21:36
 Rule:        NetworkConnect
 ```
-
 > ### 🔎 Why Sysmon Event ID 3?
 > EID 3 captures outbound network connections per process. PowerShell reaching out to three different ports on the same internal server is highly suspicious — port `80` for initial callback, `8080` for the stager download, and `4444` which is the **default Metasploit reverse shell port**. This confirms an active C2 session was established.
 
 ---
+
+### Step 7 — AMSI Bypass: Obfuscated ScriptBlock
+
+**Windows Event ID 4104** (ScriptBlock Logging) captured a heavily obfuscated PowerShell script executing on `PC01`:
+
+> <img width="1358" height="454" alt="99" src="https://github.com/user-attachments/assets/7cd437f3-e940-4918-be53-060d9adad90d" />
+
+```
+Event ID:     4104 (Script Block Logging)
+ScriptBlock:  $yLY=[Collections.Generic.Dictionary[string,System.Object]]::new();
+If($PSVersionTable.PSVersion.Major -ge 3){
+$rCh=(('Scri'+'p{2}'+'...lockLogg'+'ing')-f'B','k','t');
+... [AMSI bypass pattern — disabling script block logging]
+ScriptBlock ID: b034ea87-475a-429e-849d-68f98533e793
+```
+
+> ### 🔎 Why Event ID 4104?
+> EID 4104 is PowerShell's ScriptBlock logging — it captures the actual code before it executes, even when obfuscated. The obfuscation pattern here (string concatenation with `-f` format operator, dictionary manipulation) is a known **AMSI bypass** technique used by frameworks like Cobalt Strike and Metasploit to disable PowerShell's security logging mid-execution. The fact that it was still captured means logging was active before the bypass could complete.
+
+---
+
+## ⏱️ Attack Timeline
+
+| Time | Event | Detail |
+|---|---|---|
+| `11:20:34` | 🔴 Brute Force Begins | 436 failed logons from `104.28.242.42` → `PC01` |
+| `11:20:34` | 🔴 Initial Access | EID 4624 — successful logon, user `sarah`, from `103.114.211.240` |
+| `11:22:57` | 🔴 Logon Confirmed | Second successful logon from `104.28.242.42` |
+| `11:21:33` | 🔴 PowerShell Execution | Encoded command launched — `IEX DownloadString haha.ps1` |
+| `11:21:33` | 🔴 File Drop | PS1 policy test files written to `sarah`'s temp folder |
+| `11:21:34` | 🔴 Second Payload | PowerShell console startup + second encoded stager executed |
+| `11:21:35` | 🔴 C2 Callback | PowerShell connects to `10.0.0.11` on ports 80, 8080, 4444 |
+| `11:21:36` | 🔴 Reverse Shell | Active C2 session established on port `4444` |
+| `~11:21` | 🔴 AMSI Bypass | EID 4104 — obfuscated ScriptBlock attempts to disable logging |
+
+---
+
+## 🧾 IOC Table
+
+| Type | Value | Description |
+|---|---|---|
+| IP | `104.28.242.42` | Brute force source / attacker IP |
+| IP | `103.114.211.240` | Secondary attacker IP — successful logon |
+| IP | `10.0.0.11` | Internal C2 server |
+| Port | `4444` | Reverse shell (Metasploit default) |
+| Port | `8080` | C2 stager download |
+| URL | `http://10.0.0.11/haha.ps1` | First stage payload |
+| URL | `http://10.0.0.11:8080/nj6VXD4hquF64Q/Z2oecggFq` | Second stage payload |
+| File | `__PSScriptPolicyTest_qkov5u21.f.ps1` | Policy bypass test script |
+| File | `__PSScriptPolicyTest_4h3zq2b3.msq.ps1` | Policy bypass test script |
+| Path | `C:\Users\sarah\AppData\Local\Temp\3\` | Payload staging directory |
+| User | `sarah` | Compromised account |
+| Host | `PC01` | Compromised endpoint |
+| ScriptBlock ID | `b034ea87-475a-429e-849d-68f98533e793` | AMSI bypass script |
+
+---
+
+## 🗺️ MITRE ATT&CK Mapping
+
+| Tactic | Technique | ID | Evidence |
+|---|---|---|---|
+| Credential Access | Brute Force | T1110 | 436 EID 4625 from same IP in <1 min |
+| Initial Access | Valid Accounts | T1078 | EID 4624 — `sarah` logon after brute force |
+| Execution | PowerShell | T1059.001 | `powershell.exe -EncodedCommand` |
+| Defense Evasion | Obfuscated Files or Information | T1027 | Base64 encoded payload + string obfuscation |
+| Defense Evasion | Impair Defenses — AMSI Bypass | T1562.001 | EID 4104 ScriptBlock disabling logging |
+| Command & Control | Application Layer Protocol | T1071 | HTTP/HTTPS callbacks to `10.0.0.11` |
+| Command & Control | Ingress Tool Transfer | T1105 | `DownloadString` pulling PS1 from C2 |
+| C2 | Non-Standard Port | T1571 | Port `4444` reverse shell |
+
+---
+
+## 🚨 Response Actions
+
+| Priority | Action |
+|---|---|
+| 🔴 Immediate | Isolate `PC01` from the network |
+| 🔴 Immediate | Disable account `sarah` — reset credentials |
+| 🔴 Immediate | Block `104.28.242.42` and `103.114.211.240` at firewall |
+| 🔴 Immediate | Isolate / investigate `10.0.0.11` — C2 server on internal network |
+| 🟠 High | Pull memory dump from `PC01` — fileless payload may still be in memory |
+| 🟠 High | Scan for additional hosts that connected to `10.0.0.11` |
+| 🟡 Medium | Review all EID 4624 events — check for lateral movement from `sarah` |
+| 🟡 Medium | Audit PowerShell execution policy and enable constrained language mode |
+| 🟡 Medium | Enable AMSI logging and PowerShell module logging across all endpoints |
+
+---
+
+## 📝 Lessons Learned
+
+> **The attacker got in through the front door.**
+> No exploit, no zero-day — just a weak password and no account lockout policy. Once in, they weaponized PowerShell within seconds. The C2 server being on the **internal network** (`10.0.0.11`) suggests either a previously compromised internal host or an insider-assisted operation.
+
+Key takeaways:
+- Account lockout policies would have stopped the brute force at step 1
+- `-EncodedCommand` PowerShell should trigger an immediate high-severity alert
+- An internal IP acting as C2 is a critical finding — it means the network was already partially compromised before this incident
+- AMSI bypass attempts indicate a sophisticated, framework-driven attack — not a script kiddie
+
+---
+
+## 📚 References
+
+| Resource | Link |
+|---|---|
+| MITRE T1110 — Brute Force | [attack.mitre.org](https://attack.mitre.org/techniques/T1110/) |
+| MITRE T1059.001 — PowerShell | [attack.mitre.org](https://attack.mitre.org/techniques/T1059/001/) |
+| MITRE T1027 — Obfuscation | [attack.mitre.org](https://attack.mitre.org/techniques/T1027/) |
+| MITRE T1105 — Ingress Tool Transfer | [attack.mitre.org](https://attack.mitre.org/techniques/T1105/) |
+| Sysmon Event ID Reference | [docs.microsoft.com](https://docs.microsoft.com/en-us/sysinternals/downloads/sysmon) |
+| CyberChef | [gchq.github.io/CyberChef](https://gchq.github.io/CyberChef/) |
+
+---
+
+
