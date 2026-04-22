@@ -80,3 +80,46 @@ Step 5 → File Drop                 (Sysmon EID 11 — PS1 files written to dis
 Step 6 → C2 Callback               (Sysmon EID 3 — outbound to 10.0.0.11:4444)
 Step 7 → AMSI Bypass               (Event ID 4104 — obfuscated ScriptBlock logged)
 ```
+---
+
+## 🕵️ Investigation
+
+### Step 1 — Brute Force Detection: 436 Failed Logons
+
+The alert was triggered by a flood of **Windows Event ID 4625** (failed logon) events on `PC01`.
+
+> <img width="1328" height="361" alt="0" src="https://github.com/user-attachments/assets/8b5eec51-c3d1-4232-afc0-c4bbee3e63be" />
+> <img width="1336" height="280" alt="00" src="https://github.com/user-attachments/assets/d536b91a-a93e-47e9-8630-734202f4ba79" />
+
+
+---
+Event ID:    4625 (Failed Logon)
+Source IP:   104.28.242.42
+Target Host: PC01
+Count:       436 attempts
+Timeframe:   11:27:28 → 11:27:36 (< 1 minute)
+---
+> ### 🔎 Why Event ID 4625?
+> EID 4625 is logged every time a Windows logon attempt fails. A single external IP generating 436 failures in under a minute against the same host is a textbook **credential brute force** pattern. The volume and speed rule out human error — this is automated.
+
+---
+
+### Step 2 — Initial Access Confirmed: Successful Logon
+
+After the brute force, **Event ID 4624** (successful logon) was observed from the same attacker IP on `PC01`.
+
+> <img width="1319" height="115" alt="001" src="https://github.com/user-attachments/assets/5c97ec91-da03-4bf6-9b22-ae134c1676d6" />
+
+> <img width="1314" height="119" alt="01" src="https://github.com/user-attachments/assets/40f2918c-ded2-44ed-b760-b0a5f736b745" />
+
+---
+Event ID:    4624 (Successful Logon)
+Source IPs:  104.28.242.42 / 103.114.211.240
+Target Host: PC01
+User:        sarah
+Time:        11:20:34 / 11:22:57 / 11:26:26
+---
+> ### 🔎 Why Event ID 4624?
+> EID 4624 confirms a successful authentication. Coming directly after 436 failed attempts from the same IP, this is **not a coincidence** — the brute force succeeded. The attacker now has valid credentials for user `sarah` on `PC01`.
+
+---
