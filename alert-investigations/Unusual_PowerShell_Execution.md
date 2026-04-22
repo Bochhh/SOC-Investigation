@@ -71,6 +71,7 @@ This investigation traces the full kill chain from the first failed logon to an 
 
 ## 🔍 Investigation Methodology
 
+```
 Step 1 → Brute Force Detection     (Event ID 4625 — failed logons volume)
 Step 2 → Initial Access Confirmed  (Event ID 4624 — successful logon)
 Step 3 → PowerShell Execution      (Sysmon EID 1 — encoded command launched)
@@ -78,3 +79,4 @@ Step 4 → Payload Decode            (CyberChef — Base64 → IEX DownloadStrin
 Step 5 → File Drop                 (Sysmon EID 11 — PS1 files written to disk)
 Step 6 → C2 Callback               (Sysmon EID 3 — outbound to 10.0.0.11:4444)
 Step 7 → AMSI Bypass               (Event ID 4104 — obfuscated ScriptBlock logged)
+```
