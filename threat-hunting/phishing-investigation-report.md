@@ -245,12 +245,20 @@ This technique is known as **QRLjacking** or a **device pivot attack**. The atta
 
 ### Findings
 
-After scanning the QR code (investigated via controlled environment), the redirect led to a page prompting the download of what appeared to be an **Indeed mobile app**. The page detected that the real Indeed app was already installed on the device and displayed an **"Open Indeed"** button.
+After scanning the QR code, the redirect opened . The page displayed a convincing fake Indeed interface complete with the official Indeed logo, branded colors, and fake legal disclaimers at the bottom reading "2026 • Indeed".
+The page presented itself as an official interview scheduling portal titled "Interview with the Employer" with the following instructions:
 
-**This is not the real Indeed app.** This is a trojanized APK designed to:
-- Steal Indeed credentials
-- Harvest personal information submitted during the "interview process"
-- Potentially install persistent mobile malware
+Download the Indeed Interview App
+Install the App on your phone
+
+A "Download the app" button directly served a trojanized APK from:
+```
+https{:}{{//}}darkotank{.}com/download/PUai1WRArnGELlKW1GgYaQpP7iJMR3PWmF55tAWg
+```
+This is not the real Indeed app. The APK is served directly from the attacker's domain — not from Google Play Store — deliberately bypassing Google Play Protect. The unique token in the download URL (PUai1WRArnGELlKW1GgYaQpP7iJMR3PWmF55tAWg) suggests per-victim tracking, meaning each target receives a unique download link.
+
+Without dynamic or static analysis of the APK itself, its exact capabilities remain unknown. However based on the context of the campaign — credential harvesting, PII collection, and fake interview process — it is likely designed to steal victim credentials and/or personal data.
+The APK was not downloaded or installed during this investigation. Full malware analysis would require a controlled sandbox environment such as Any.run or Joe Sandbox.
 
 **The APK was not downloaded or installed during this investigation.**
 
@@ -338,7 +346,7 @@ After scanning the QR code (investigated via controlled environment), the redire
 
 ## Conclusion
 
-This investigation uncovered a sophisticated, multi-stage phishing campaign targeting job seekers on Indeed. The threat actor demonstrated above-average operational awareness — correctly anticipating Gmail spam filters, abusing a trusted platform (Indeed) to bypass victim skepticism, using redirect chains to evade URL scanners, and pivoting to mobile to escape desktop security controls.
+This investigation uncovered a sophisticated 6-stage recruitment fraud campaign targeting job seekers on Indeed. The threat actor demonstrated above-average operational awareness — creating a fake job posting to harvest CVs at scale, abusing Indeed's own platform to bypass victim skepticism, using redirect chains to evade URL scanners, and pivoting to mobile via QR code to escape desktop security controls. This is not an opportunistic attack — the level of preparation and evasion techniques indicate a deliberate, scaled operation targeting multiple companies simultaneously.
 
 No systems or accounts were compromised during this investigation. All findings were documented and reported .
 ---
