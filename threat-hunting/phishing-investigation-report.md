@@ -235,7 +235,7 @@ This technique is known as **QRLjacking** or a **device pivot attack**. The atta
 - Mobile browsers display fewer security warnings
 - APK sideloading is only possible on mobile
 
-The QR code was not scanned during this investigation to avoid mobile device exposure.
+
 
 ---
 
