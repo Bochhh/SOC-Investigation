@@ -129,6 +129,9 @@ The email was sent via `smtp.hostinger.com` (Hostinger's shared SMTP). Hostinger
 
 **Finding 5 — Content analysis**
 
+> <img width="831" height="202" alt="dd" src="https://github.com/user-attachments/assets/b51914ba-e7f8-4b65-b01b-4f2774382658" />
+
+
 - No company name mentioned
 - No job title specified
 - No details about where the application was found
