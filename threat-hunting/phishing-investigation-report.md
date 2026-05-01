@@ -21,9 +21,11 @@
 
 ## Executive Summary
 
-On 1 May 2026, I identified and investigated a sophisticated 5-stage phishing campaign targeting job seekers who had applied to the IT & Cybersecurity position at Qatar National Cement Company (QNCC) via Indeed.
+On 1 May 2026, I identified and investigated a sophisticated 6-stage recruitment fraud and phishing campaign fully impersonating Qatar National Cement Company (QNCC) on the Indeed platform.
 
-The threat actor scraped the legitimate QNCC job posting on Indeed, used it to send fraudulent platform messages impersonating QNCC recruiters, and then directed victims through a multi-hop redirect chain ending in a fake Indeed APK download designed to compromise mobile devices.
+The threat actor created a fraudulent QNCC employer account on Indeed and posted a fake "IT & Cybersecurity" job listing to harvest victim CVs and personal information at scale. Applicants were then targeted individually through a multi-stage phishing chain — a follow-up phishing email, an Indeed platform message to build trust, a multi-hop URL redirect chain, a QR code device pivot, and finally a trojanized Indeed APK targeting the victim's mobile device.
+
+Notably, the job posting does not appear anywhere on QNCC's official website (qatarcement.com), confirming it was entirely fabricated by the threat actor. QNCC has no knowledge of or involvement in this campaign.
 
 The attack was fully analyzed using email header forensics, WHOIS lookups, sandbox browsing, and OSINT techniques. No systems were compromised during this investigation.
 
@@ -32,6 +34,11 @@ The attack was fully analyzed using email header forensics, WHOIS lookups, sandb
 ## Attack Chain Overview
 
 ```
+Stage 0 — Fake QNCC Job Posting on Indeed (CV Harvesting)
+Attacker creates fraudulent QNCC employer account on Indeed
+Posts fake "IT & Cybersecurity" job to collect victim CVs
+Harvests: full name, email, phone, work history, addres
+         ↓
 Stage 1 — Phishing Email
 hose@manageinterview.com → victim Gmail
 Subject: "Are you ready for a change?"
@@ -71,6 +78,9 @@ Final payload delivery
 The raw email headers were extracted via Gmail → 3 dots menu → **Show Original**. This reveals the full routing path of the email hop by hop.
 
 **Key header extracted:**
+
+>  <img width="929" height="91" alt="5o" src="https://github.com/user-attachments/assets/f4584db0-0cec-4d67-ad10-d3571b2c85b0" />
+
 ```
 Received: from WIN-IM9UBC1F97K
 (2001:b030:b80c:4c00:dbe:2b24:5005:42a5.hinet-ip6.hinet.net
@@ -85,6 +95,9 @@ by smtp.hostinger.com
 
 The IPv6 address `2001:b030:b80c:4c00:dbe:2b24:5005:42a5` resolves to `hinet-ip6.hinet.net`. HiNet is the internet service of **Chunghwa Telecom**, Taiwan's national telecom provider. The `2001:b030` IPv6 prefix is allocated to Chunghwa Telecom / Taiwan. A recruiter claiming to contact on behalf of a Qatari company but routing email through Taiwan is a significant red flag.
 
+> <img width="1330" height="587" alt="pp" src="https://github.com/user-attachments/assets/535fb186-be63-4108-97c4-cb374dba8d2f" />
+
+
 **Verification tool:** ipinfo.io / bgp.he.net — paste the IP to confirm geolocation.
 
 **Finding 2 — Sender domain vs link domain mismatch**
@@ -97,6 +110,9 @@ The IPv6 address `2001:b030:b80c:4c00:dbe:2b24:5005:42a5` resolves to `hinet-ip6
 Two completely different domains. Legitimate companies always use their own domain for scheduling links. This mismatch is a primary phishing indicator.
 
 **Finding 3 — DKIM / SPF / DMARC all passed**
+
+>  <img width="1077" height="177" alt="ppp" src="https://github.com/user-attachments/assets/33548d6d-95dc-4903-9aa0-487ac1b7ed72" />
+
 
 ```
 dkim=pass header.i=@manageinterview.com
@@ -126,6 +142,9 @@ The email was sent via `smtp.hostinger.com` (Hostinger's shared SMTP). Hostinger
 
 ### Tool Used — Indeed Inbox / Screenshot Analysis
 
+>  <img width="762" height="423" alt="2" src="https://github.com/user-attachments/assets/3ed6b1c0-7164-4382-8700-4bac93f3e6c9" />
+
+
 A follow-up message was sent directly through Indeed's own messaging platform from an account named **"Hose - IT & Cybersecurity (QNCC)"**, referencing the real QNCC job posting.
 
 ### Findings
@@ -149,6 +168,11 @@ All URLs were investigated inside a sandbox browser to prevent any risk to the h
 
 ### Redirect Chain
 
+>  <img width="831" height="202" alt="dd" src="https://github.com/user-attachments/assets/6ce7d088-11e3-4f06-a8c5-27ae08afc496" />
+
+
+>  <img width="1071" height="467" alt="3" src="https://github.com/user-attachments/assets/4bc744b3-dfc7-4b2a-a27a-b6b275bf27c2" />
+
 ```
 https://welcometointerview.com
         ↓ (HTTP redirect)
@@ -160,6 +184,12 @@ https://darkotank.com/?company=the%20Employer
 ### Tool Used — WHOIS Lookup (who.is)
 
 WHOIS lookup performed on `darkotank.com` at `https://who.is/whois/darkotank.com`
+
+> <img width="851" height="445" alt="558" src="https://github.com/user-attachments/assets/3dc1b6a7-e0eb-4f0a-af4a-efcf732eb436" />
+
+>  <img width="888" height="239" alt="888" src="https://github.com/user-attachments/assets/f4d4db63-c060-4412-a5f7-8e1bc04f1645" />
+
+
 
 ### WHOIS Findings — darkotank.com
 
@@ -183,6 +213,9 @@ The `?company=` parameter suggests the attacker is running this campaign against
 
 ## Stage 4 — QR Code / QRLjacking (Device Pivot)
 
+>  <img width="1071" height="467" alt="3" src="https://github.com/user-attachments/assets/1353b4a9-e6b7-497c-b1ed-94aa804b1c4f" />
+
+
 ### Tool Used — Sandbox Browser Screenshot
 
 The landing page at `darkotank.com` displayed a QR code with the message:
@@ -203,6 +236,8 @@ The QR code was not scanned during this investigation to avoid mobile device exp
 ---
 
 ## Stage 5 — Fake Indeed APK (Final Payload)
+ > <img width="270" height="414" alt="7777" src="https://github.com/user-attachments/assets/9fd92223-c040-4832-9562-fdc33e51b4fe" />
+ 
 
 ### Findings
 
@@ -229,7 +264,9 @@ After scanning the QR code (investigated via controlled environment), the redire
 | URL | `https://darkotank.com/?company=the%20Employer` | Stage 3 |
 | IP (Hosting) | `104.21.78.31` | Stage 3 |
 | Domain | `darkotank.com` | Stage 3 |
+| URL | `https{:}{{//}}darkotank{.}com/download/PUai1WRArnGELlKW1GgYaQpP7iJMR3PWmF55tAWg` | Stage 3 |
 | Payload | Fake Indeed APK (trojanized) | Stage 5 |
+
 
 ---
 
@@ -299,10 +336,9 @@ After scanning the QR code (investigated via controlled environment), the redire
 
 This investigation uncovered a sophisticated, multi-stage phishing campaign targeting job seekers on Indeed. The threat actor demonstrated above-average operational awareness — correctly anticipating Gmail spam filters, abusing a trusted platform (Indeed) to bypass victim skepticism, using redirect chains to evade URL scanners, and pivoting to mobile to escape desktop security controls.
 
-No systems or accounts were compromised during this investigation. All findings were documented and reported to QNCC, Indeed, and Hostinger for remediation and takedown.
-
+No systems or accounts were compromised during this investigation. All findings were documented and reported .
 ---
 
 *Report authored by **Moetez Bouchlaghem***
 *Date: 1 May 2026*
-*Contact: moetezbouchlaghem1@gmail.com*
+
