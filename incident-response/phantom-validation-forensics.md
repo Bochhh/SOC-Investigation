@@ -102,7 +102,8 @@ Phase 7 → Full Chain Assembly    (connect all artifacts into one timeline)
 
 Every forensic investigation starts the same way — before touching anything, map the terrain. We were given a copy of the victim's C drive and a set of supplementary artifacts. The first step was to load the C drive copy into **FTK Imager** and understand the folder structure.
 
-> 📸 *Screenshot: FTK Imager — Evidence Tree showing C drive structure with $Extend, ProgramData, Users (Default, Public, T3M0), Windows folders*
+> <img width="349" height="491" alt="0" src="https://github.com/user-attachments/assets/dd4bf59c-230f-4358-b9ba-44a396559cad" />
+
 
 FTK Imager is a forensic imaging and browsing tool that lets us read a drive copy without modifying it — preserving the integrity of the evidence. The moment we opened the Evidence Tree, one thing stood out immediately: the user folder was named **`T3M0`** — not a default Windows name. This is our victim.
 
@@ -125,7 +126,6 @@ Alongside the C drive, we also had access to four supplementary artifact files:
 
 We also found three critical NTFS system files at the root of the C drive copy:
 
-> 📸 *Screenshot: FTK Imager — root of C drive showing $Boot, $LogFile (65,536 KB), $MFT (145,664 KB), $Secure_$SDS*
 
 | File | Size | Purpose |
 |---|---|---|
@@ -154,24 +154,17 @@ We navigated through the Evidence Tree to the Chrome profile folder:
 T3M0 → AppData → Local → Google → Chrome → User Data → Default
 ```
 
-> 📸 *Screenshot: FTK Imager — Chrome Default folder showing History, Login Data, Preferences, Web Data files*
+> <img width="459" height="152" alt="00" src="https://github.com/user-attachments/assets/c29bff7e-bcac-4142-a1ce-2a4933f27c7f" />
 
-Inside this folder we found several SQLite database files. Chrome stores virtually all its data in SQLite format — visited URLs, downloaded files, saved passwords, cookies, and browser preferences. We exported the **`Preferences`** file first — this is a JSON configuration file that Chrome uses to store account settings and is the most direct source for the signed-in Google account email.
 
-After exporting via FTK Imager (right-click → Export Files), we opened it in **Notepad++** and searched for `email` using Ctrl+F.
+Inside this folder we found several SQLite database files. Chrome stores virtually all its data in SQLite format — visited URLs, downloaded files, saved passwords, cookies, and browser preferences. 
 
-> 📸 *Screenshot: Notepad++ — Preferences file open, email field visible showing darknight1133377@gmail.com*
+We opened the Chrome History database directly in DB Browser for SQLite and navigated to the urls table. Scrolling through the browsing history, row 29 revealed a Gmail tab title that exposed the victim's email address embedded directly in the page title — exactly as Chrome records it when a Gmail message is open.
 
-But reading a wall of JSON text in Notepad++ is inefficient and error-prone. The professional approach is to use **DB Browser for SQLite** — a tool designed specifically for reading SQLite databases in a clean table view. We opened the Chrome `History` database and navigated to the `urls` table:
+> <img width="1029" height="538" alt="3" src="https://github.com/user-attachments/assets/c1398b87-dade-4d84-8c67-3bfb978b68c6" />
 
-> 📸 *Screenshot: DB Browser for SQLite — urls table, row 29 selected, Edit Database Cell panel showing "Payroll Template January 2026 - darknight1133377@gmail.com - Gmail"*
 
-The Gmail page title confirmed the victim's email address embedded in the browser tab title — exactly as it appears when Gmail is open in Chrome.
-
-**✅ Q1 Answer:**
-```
-darknight1133377@gmail.com
-```
+Chrome stores the full page title of every visited URL in the urls table. When Gmail is open, the tab title follows the format [email subject] - [account email] - Gmail — giving us both the phishing email subject "Payroll Template January 2026" and the victim's account darknight1133377@gmail.com in a single record.
 
 ---
 
