@@ -174,7 +174,8 @@ With the victim identified, we needed to trace what they clicked. Chrome doesn't
 
 We switched to the `downloads_url_chains` table in DB Browser:
 
-> 📸 *Screenshot: DB Browser for SQLite — downloads_url_chains table showing 4 rows: dl.google.com (chain 0), google.com/url (chain 0), https://2cm.es/lnUk9 (chain 1), http://8.222.205.174/scripts/Payroll_Update_January.zip (chain 2)*
+> <img width="648" height="79" alt="1" src="https://github.com/user-attachments/assets/2f6a45db-2950-451f-adf7-27ba04950a25" />
+
 
 The `chain_index` column tells the story perfectly:
 
@@ -194,7 +195,9 @@ The redirect chain tells a clear story: the victim received a link, clicked it, 
 ```
 https://2cm.es/lnUk9
 ```
+>  <img width="1013" height="388" alt="2" src="https://github.com/user-attachments/assets/14015e00-4c64-4ef3-8207-85878822e62c" />
 
+ 
 **✅ Q3 Answer:**
 ```
 http://8.222.205.174/scripts/Payroll_Update_January.zip
@@ -210,7 +213,8 @@ The victim downloaded `Payroll_Update_January.zip` and extracted it. Something i
 
 We opened **MFT Explorer** and loaded the `$MFT` file. MFT Explorer is a GUI tool from Eric Zimmermann that lets us browse the Master File Table visually — navigating through the folder structure just like Windows Explorer, but with full forensic metadata for every file.
 
-> 📸 *Screenshot: MFT Explorer — T3M0\Desktop folder selected, file list showing KAPE folder, New folder, ChatGPT Installer.exe, desktop.ini, gpg4win-4.4.1.exe, Payroll_Verification.cmd*
+> <img width="1032" height="606" alt="4" src="https://github.com/user-attachments/assets/73c66e8f-0e6c-4fb1-93aa-58917168f8e2" />
+
 
 Navigating to `T3M0\Desktop`, one file immediately stood out:
 
@@ -250,15 +254,13 @@ Payroll_Verification.cmd
 
 The question specifically asks for the timestamp from **NTFS change records** — meaning the `$LogFile`, not just the MFT. We used **NTFS Log Tracker** to parse the `$LogFile` alongside the `$MFT`:
 
-> 📸 *Screenshot: NTFS Log Tracker — $LogFile parsed, Payroll_Verification.cmd entry showing FILE_CREATE operation at 2026-02-01 09:15:16*
+
 
 We also parsed the `$MFT` using **MFTECmd** from Eric Zimmermann Tools to export a full CSV for searching in Timeline Explorer:
 
 ```bash
 MFTECmd.exe -f "C:\Users\LetsDefend\Desktop\ChallengeFile\$MFT" --csv "C:\Users\LetsDefend\Desktop\output" --csvf mft_output.csv
 ```
-
-> 📸 *Screenshot: Timeline Explorer — mft_output.csv loaded, filtered for Payroll_Verification.cmd, SI_Created timestamp visible*
 
 > ### 🔎 Why use $LogFile instead of just MFT timestamps?
 > The MFT stores the current state of a file's timestamps — but those can be altered. The `$LogFile` records the actual filesystem transaction at the moment it happened. It's like the difference between a document and the audit log of who edited it and when. The `$LogFile` is the most forensically reliable source for "when did this file actually appear on disk."
@@ -272,18 +274,13 @@ MFTECmd.exe -f "C:\Users\LetsDefend\Desktop\ChallengeFile\$MFT" --csv "C:\Users\
 
 ### Phase 4 — The Transient File: Created and Deleted in the Same Window (Q6)
 
-This was the most interesting forensic challenge. The scenario described a file that was "quickly deleted" — a transient file used during execution and then removed to cover tracks. Files like this don't appear in normal filesystem browsing because they're gone. But they leave traces in two places: the `$MFT` (as a deleted entry) and the `$LogFile` (as a create + delete transaction pair).
+The answer to Q6 came directly from the Caddy server access log (acces-logs.json). While analyzing the server log for C2 communication evidence, we found a GET request for a file named payroll_template.dat — a file that never appeared in our filesystem browsing because it was already deleted by the time we acquired the evidence.
 
-We filtered Timeline Explorer on `IsDeleted = True` and narrowed the timeframe to `2026-02-01` around the execution window. We were also looking for files fetched from the C2 server — something that appeared, was used, and then vanished.
+> <img width="1026" height="589" alt="5" src="https://github.com/user-attachments/assets/e042434f-390f-43d2-b32f-2001e4c02f1c" />
 
-> 📸 *Screenshot: Timeline Explorer — IsDeleted filter applied, showing payroll_template.dat entry with creation and deletion timestamps in same execution window*
 
-Cross-referencing with the **skip logs** (files that couldn't be copied during acquisition because they were locked or deleted), we confirmed the file's existence:
-
-> 📸 *Screenshot: Skip logs — payroll_template.dat listed as skipped during copy*
-
-> ### 🔎 What does "create-and-delete lifecycle" mean forensically?
-> When an attacker fetches a file, uses it, and immediately deletes it, they're trying to leave no trace on disk. But NTFS records both the creation and deletion as separate transactions in the `$LogFile`. Even if the file content is gone, the metadata — filename, path, timestamps, size — remains in the MFT as a deleted entry. This is why forensic investigators always analyze the `$LogFile` and filter deleted files — the attacker's cleanup operation itself becomes evidence.
+The status: 404 response is the key indicator of the transient lifecycle — the server returned "file not found" because payroll_template.dat had already been deleted from the C2 server after use. The file was fetched by certutil.exe, used within the execution window, and then removed from both the victim machine and the attacker's server — a deliberate anti-forensics move.
+The access log is the only artifact that preserved evidence of this file's existence.
 
 **✅ Q6 Answer:**
 ```
@@ -296,7 +293,8 @@ payroll_template.dat
 
 Before diving into the server logs, we checked the **Prefetch** folder — one of the most valuable sources of program execution evidence on Windows. Every time a program runs for the first time, Windows creates a `.pf` (prefetch) file recording its name, run count, last run time, and the files it accessed.
 
-> 📸 *Screenshot: FTK Imager — Windows\Prefetch folder showing CERTUTIL.EXE-FA34F34C.pf among other prefetch files*
+>  <img width="676" height="220" alt="8" src="https://github.com/user-attachments/assets/bb48e58b-5c1c-419e-8072-fa6ca7f16f20" />
+
 
 ```
 CERTUTIL.EXE-FA34F34C.pf  ← 🚨 certutil was executed on this machine
@@ -319,7 +317,8 @@ The most direct evidence of what happened comes from the attacker's own server. 
 
 We opened `acces-logs.json` in **Notepad++** and searched for `.dat` — the extension of our transient file.
 
-> 📸 *Screenshot: Notepad++ — acces-logs.json open, search for .dat, entry visible showing uri: /update/payroll_template.dat, User-Agent: CertUtil URL Agent, status: 404*
+> <img width="921" height="398" alt="7" src="https://github.com/user-attachments/assets/05bbdd5c-ef4f-44c2-a44f-5abfe6b0edf6" />
+
 
 We found two log entries for `payroll_template.dat`. Let's read them carefully:
 
@@ -399,7 +398,6 @@ certutil.exe
 
 The server log timestamp `1769926371.447009` is in Unix epoch format — the number of seconds elapsed since January 1, 1970 at 00:00:00 UTC. To convert it to a human-readable timestamp, we used **CyberChef**:
 
-> 📸 *Screenshot: CyberChef — From Unix Timestamp recipe, input 1769926371, output showing 2026-02-01 07:23:29 UTC*
 
 ```
 Input:  1769926371
