@@ -94,7 +94,11 @@ Every memory forensics investigation starts with understanding the environment. 
 
 We used `windows.sessions` to extract all user session data from the memory dump, then piped the output through a Linux command chain to extract unique usernames:
 
-> 📸 *Screenshot: Terminal — windows.sessions output saved to session.txt, then cat session.txt | grep '/' | awk '{print $5}' | uniq | sort -u showing all users*
+> <img width="1072" height="86" alt="0" src="https://github.com/user-attachments/assets/92549e2c-2826-40c8-907c-70e869b68335" />
+
+> <img width="1063" height="185" alt="11" src="https://github.com/user-attachments/assets/6fc6699f-d57e-4f08-b418-365a8c6e8a58" />
+
+
 
 ```bash
 # Extract session data from memory
@@ -135,7 +139,14 @@ python3 vol.py -f ../ChallengeFile/vLP.vmem windows.filescan > file.txt
 cat file.txt | grep 'Downl'
 ```
 
-> 📸 *Screenshot: Terminal — filescan filtered for 'Downl' showing Downloads directories for legend, mark, flapjack, and TEMP user, with Windows10Crack.exe visible in flapjack's Downloads*
+> <img width="1360" height="264" alt="2" src="https://github.com/user-attachments/assets/8166b95a-b3e8-4ed9-9a4b-33ab81c84a5e" />
+
+> <img width="899" height="173" alt="3" src="https://github.com/user-attachments/assets/0c33470c-7f76-465c-9c2a-c505e72e270c" />
+
+> <img width="1008" height="66" alt="4" src="https://github.com/user-attachments/assets/aff83310-e726-4aa5-b400-272719203053" />
+
+
+
 
 ```
 Output (Downloads directories):
@@ -168,7 +179,8 @@ Output (Downloads directories):
 
 With the malicious file identified, we extracted it from memory using `windows.dumpfiles`. The virtual address from `filescan` tells Volatility exactly where in memory the file object lives:
 
-> 📸 *Screenshot: Terminal — windows.dumpfiles --virtaddr 0xe4870d72ebf0 producing ImageSectionObject.Windows10Crack.exe.img*
+> <img width="269" height="205" alt="6" src="https://github.com/user-attachments/assets/e308772f-710c-4938-b8b5-948485de1700" />
+
 
 ```bash
 python3 vol.py -f ../ChallengeFile/vLP.vmem windows.dumpfiles --virtaddr 0xe4870d72ebf0
@@ -192,7 +204,11 @@ ImageSectionObject 0xe4870d72ebf0  Windows10Crack.exe file.0xe4870d72ebf0.0xe487
 
 The dumped `Windows10Crack.exe.img` was loaded into **IDA Pro** for static reverse engineering. IDA disassembles the binary — converting raw machine code back into human-readable assembly instructions.
 
-> 📸 *Screenshot: IDA Pro — main function open, showing 1075 functions, disassembly view with lea rdx pointing to http://48.147.154.231/XGUbdem0hd.exe string highlighted in yellow, GetTempPathA call, and "Cracking Windows. Please Wait!!" string visible*
+> <img width="1360" height="554" alt="7" src="https://github.com/user-attachments/assets/d6ccc495-cc91-4ae4-92ff-d114431b71c1" />
+
+> <img width="1361" height="424" alt="8" src="https://github.com/user-attachments/assets/04a1fae3-b1ae-48dd-9ff9-50958103d9cc" />
+
+
 
 ```asm
 ; Inside main function — the dropper logic:
@@ -259,7 +275,8 @@ call   sub_46EDC0            ; ← display fake UI message
 
 Now that we knew the ransomware filename (`XGUbdem0hd.exe`) and its drop location (`Temp`), we searched the filescan output:
 
-> 📸 *Screenshot: Terminal — cat file.txt | grep 'XGUbdem0hd.exe' showing 0xe4870d737570 \Users\flapjack\AppData\Local\Temp\XGUbdem0hd.exe*
+>  <img width="802" height="85" alt="9" src="https://github.com/user-attachments/assets/45df200c-2a4e-43a4-b2a8-c025f1f7a93f" />
+
 
 ```bash
 cat file.txt | grep 'XGUbdem0hd.exe'
@@ -271,7 +288,7 @@ cat file.txt | grep 'XGUbdem0hd.exe'
 
 Found it. We dumped it immediately:
 
-> 📸 *Screenshot: Terminal — windows.dumpfiles --virtaddr 0xe4870d737570 producing XGUbdem0hd.exe.img, then md5sum showing bde56933af564b982eea620666e01f9f*
+> <img width="1353" height="223" alt="10" src="https://github.com/user-attachments/assets/ca194197-2162-41b9-a2b9-22d446be12c4" />
 
 ```bash
 # Dump the ransomware
@@ -283,6 +300,7 @@ Output:
 ImageSectionObject  0xe4870d737570  XGUbdem0hd.exe
 file.0xe4870d737570.0xe4870fc51d00.ImageSectionObject.XGUbdem0hd.exe.img
 ```
+
 
 ```bash
 # Hash the dumped file
@@ -307,7 +325,9 @@ bde56933af564b982eea620666e01f9f   XGUbdem0hd.exe.img
 
 The MD5 hash was submitted to **VirusTotal**. The behavior analysis report confirmed this is ransomware and revealed exactly how it operates on a Windows system.
 
-> 📸 *Screenshot: VirusTotal behavior tab — Registry Keys Opened section showing all registry keys the ransomware accesses*
+>  <img width="1364" height="631" alt="111" src="https://github.com/user-attachments/assets/0fb217db-9765-4e99-91de-0cac8e760af0" />
+
+
 
 Full behavior report available at:
 **[https://www.virustotal.com/gui/file/2b96baa58402a24a21ea2bdfee7f18aa3bfe6cbe0828666ed486a4ae50c5bf8f/behavior](https://www.virustotal.com/gui/file/2b96baa58402a24a21ea2bdfee7f18aa3bfe6cbe0828666ed486a4ae50c5bf8f/behavior)**
@@ -318,7 +338,8 @@ Full behavior report available at:
 
 The VirusTotal behavior report showed every registry key the ransomware opened during execution. Each key tells a story about what the ransomware was doing:
 
-> 📸 *Screenshot: VirusTotal — Registry actions panel showing all Registry Keys Opened*
+> <img width="1085" height="370" alt="12" src="https://github.com/user-attachments/assets/b280bd7e-8060-4b40-9e1b-186a71729ada" />
+
 
 #### Registry Keys — Full Analysis
 
