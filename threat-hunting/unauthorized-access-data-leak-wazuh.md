@@ -1,0 +1,607 @@
+# 🔴 Alert Investigation — Unauthorized Access & Data Exfiltration via CVE-2018-13379
+
+![Status](https://img.shields.io/badge/Status-Complete-green?style=flat)
+![Severity](https://img.shields.io/badge/Severity-Critical-red?style=flat)
+![Type](https://img.shields.io/badge/Type-Alert%20Investigation%20%7C%20Threat%20Hunting-blue?style=flat)
+![Attack](https://img.shields.io/badge/Attack-VPN%20Exploit%20%7C%20Credential%20Theft%20%7C%20Data%20Exfiltration-orange?style=flat)
+![MITRE](https://img.shields.io/badge/MITRE-T1190%20%7C%20T1552%20%7C%20T1078%20%7C%20T1046%20%7C%20T1048-blue?style=flat)
+![Tools](https://img.shields.io/badge/Tools-Wazuh%20%7C%20Suricata%20%7C%20Fortigate-informational?style=flat)
+
+---
+
+## 📋 Case Header
+
+| Field | Detail |
+|---|---|
+| **Case Title** | Unauthorized Access & Data Exfiltration via CVE-2018-13379 |
+| **Date Range** | August 19 – August 30, 2024 |
+| **Affected System** | Fortinet SSL VPN — `vpn.example.com` (`192.168.100.10`) |
+| **Attacker IP** | `185.203.116.55` |
+| **Compromised Accounts** | `henry.jason` / `adm_eric` |
+| **Tunnel IPs** | `10.16.18.17` (henry.jason) / `10.16.0.17` (adm_eric) |
+| **Exfiltration Target** | FTP Server `172.16.18.110` |
+| **Files Stolen** | 13 files confirmed |
+| **CVE** | CVE-2018-13379 — Fortinet FortiOS SSL VPN Path Traversal |
+| **Severity** | 🔴 Critical |
+| **Verdict** | ✅ True Positive — Full attack chain confirmed: exploit → credential theft → VPN access → network recon → data exfiltration |
+
+---
+
+## 🎯 Scenario
+
+A Wazuh SIEM alert fired on a suspected unauthorized access and data leak. The investigation began with three IDS alerts from the Suricata engine — all pointing to a known critical vulnerability in the Fortinet SSL VPN portal. What started as a single CVE detection unraveled into a complete multi-stage attack: an external attacker exploited a path traversal vulnerability to steal active VPN credentials, used those credentials to gain legitimate access to the internal network, conducted systematic network reconnaissance, and ultimately exfiltrated 13 sensitive files from an internal FTP server over the span of 45 minutes.
+
+This investigation traces every step using Wazuh alert data, Suricata IDS logs, Fortigate firewall logs, and ProFTPD access logs — building the full picture from the first malicious packet to the last stolen file.
+
+---
+
+## 🛠️ Tools & Technologies
+
+| Tool | Role |
+|---|---|
+| **Wazuh SIEM** | Central log aggregation, alert correlation, threat detection |
+| **Suricata IDS** | Network intrusion detection — CVE signature matching |
+| **Fortigate Firewall** | Network traffic logging — internal lateral movement detection |
+| **ProFTPD** | FTP server logs — file access and download evidence |
+
+---
+
+## 🗂️ Log Sources Analyzed
+
+| Source | What it provided |
+|---|---|
+| `wazuh-alerts-*` | All security alerts across the environment |
+| Suricata IDS logs | CVE-2018-13379 detection, network flow data |
+| Fortigate VPN logs | VPN tunnel establishment — user, IP, country |
+| Fortigate traffic logs | Internal network scan detection |
+| ProFTPD logs | File download records — exfiltrated files |
+
+---
+
+## 📚 Resources
+
+| Resource | Link |
+|---|---|
+| CVE-2018-13379 Detail | [nvd.nist.gov](https://nvd.nist.gov/vuln/detail/CVE-2018-13379) |
+| MITRE T1190 — Exploit Public-Facing Application | [attack.mitre.org](https://attack.mitre.org/techniques/T1190/) |
+| MITRE T1552 — Unsecured Credentials | [attack.mitre.org](https://attack.mitre.org/techniques/T1552/) |
+| MITRE T1078 — Valid Accounts | [attack.mitre.org](https://attack.mitre.org/techniques/T1078/) |
+| MITRE T1046 — Network Service Discovery | [attack.mitre.org](https://attack.mitre.org/techniques/T1046/) |
+| MITRE T1048 — Exfiltration Over Alternative Protocol | [attack.mitre.org](https://attack.mitre.org/techniques/T1048/) |
+| Wazuh Documentation | [documentation.wazuh.com](https://documentation.wazuh.com/) |
+
+---
+
+## 🔍 Investigation Methodology
+
+```
+Phase 1 → IDS Alert Triage        (Wazuh — filter rule.groups: ids)
+Phase 2 → Alert Deep Dive         (Suricata fields — CVE identification)
+Phase 3 → Source IP Pivot         (Filter 185.203.116.55 — full activity)
+Phase 4 → VPN Log Analysis        (Tunnel establishment — who logged in?)
+Phase 5 → Internal Recon Hunt     (Tunnel IP pivot — what did they do inside?)
+Phase 6 → Exfiltration Evidence   (ProFTPD RETR logs — what was stolen?)
+Phase 7 → Full Chain Assembly     (Timeline + IOCs + MITRE mapping)
+```
+
+---
+
+## 🕵️ Investigation
+
+### Phase 1 — IDS Alert Triage: Where It All Started
+
+Every investigation needs an entry point. Ours was the Wazuh SIEM dashboard. The scenario indicated a suspected unauthorized access and data leak — so the logical starting point was the IDS (Intrusion Detection System) alerts, which are the front line of network threat detection.
+
+In Wazuh, IDS alerts are tagged with the rule group `ids` — generated by the **Suricata** engine integrated into the Wazuh pipeline. Suricata monitors network traffic in real time and compares it against a library of known attack signatures. When a match is found, it generates an alert that Wazuh ingests, enriches, and stores.
+
+We filtered the Wazuh Discover view:
+
+> 📸 *Screenshot: Wazuh Discover — search bar showing rule.groups: "ids", timeframe Aug 19-30 2024, 3 hits displayed, timeline spike visible around Aug 20*
+
+```
+Search query: rule.groups: "ids"
+Timeframe:    Aug 19, 2024 → Aug 30, 2024
+Result:       3 hits
+```
+
+> ### 🔎 What is Suricata and why does it matter?
+> Suricata is an open-source **Network Intrusion Detection System (NIDS)** — it inspects every packet flowing through the network and compares it against thousands of rules. Each rule targets a specific attack pattern, CVE, or malicious behavior. When Suricata fires an alert, it means it recognized a known attack signature in the network traffic. Wazuh collects these alerts and enriches them with additional context — agent information, timestamps, and MITRE ATT&CK mappings — making them much easier to investigate than raw Suricata output.
+
+Three hits in 11 days — not a flood of noise, but a focused, targeted attack. The sparse alert count is actually more concerning than thousands of alerts — it suggests precision, not a script kiddie running automated scanners.
+
+---
+
+### Phase 2 — Alert Deep Dive: Reading Every Field
+
+We expanded the first alert to read its full contents. Every field in a Suricata alert tells part of the story:
+
+> 📸 *Screenshot: Wazuh — expanded IDS alert showing all fields: data.src_ip, data.dest_ip, data.dest_port, data.alert.signature, data.alert.severity, data.alert.action, data.flow fields*
+
+```
+Field Analysis — Alert 1:
+
+agent.name:                    wazuh-server
+data.in_iface:                 eth0
+data.src_ip:                   185.203.116.55        ← attacker IP
+data.src_port:                 51234
+data.dest_ip:                  192.168.100.10        ← VPN server
+data.dest_port:                443                   ← HTTPS (VPN portal)
+data.event_type:               alert
+data.alert.signature:          FORTINET SSL VPN CVE-2018-13379 path traversal attempt
+data.alert.signature_id:       202513379             ← Suricata rule ID
+data.alert.severity:           2                     ← high severity
+data.alert.action:             allowed               ← 🚨 NOT blocked
+data.alert.category:           Attempted Information Leak
+data.alert.metadata.cve:       CVE-2018-13379        ← confirmed CVE
+data.alert.metadata.mitre_tactic:   Initial Access
+data.alert.metadata.mitre_technique: T1190
+data.alert.metadata.attack_target:  Server
+data.flow.bytes_toclient:      1248                  ← server responded with data
+data.flow.bytes_toserver:      945
+data.flow.pkts_toclient:       5
+data.flow.pkts_toserver:       6
+data.flow.start:               2024-08-20T08:42:18
+```
+
+> ### 🔎 Field by Field Explanation
+>
+> **`data.alert.action: allowed`** — This is the most critical field. Suricata was running in **IDS mode** (detection only), not **IPS mode** (prevention). `allowed` means the malicious request was **not blocked** — it passed through to the VPN server. If it had been running in IPS mode, the value would be `blocked` and the attack would have been stopped.
+>
+> **`data.alert.severity: 2`** — Suricata severity scale goes from 1 (most critical) to 3 (informational). Severity 2 is high — this is a known, actively exploited CVE.
+>
+> **`data.flow.bytes_toclient: 1248`** — The server sent 1248 bytes back to the attacker. A blocked or error response would typically be 200-400 bytes. 1248 bytes suggests the server returned actual file content — the `sslvpn_websession` file containing VPN credentials.
+>
+> **`data.alert.metadata.mitre_tactic: Initial Access`** — Suricata's rule metadata has already mapped this to MITRE ATT&CK. T1190 (Exploit Public-Facing Application) is exactly what this is — exploiting an internet-facing VPN portal.
+
+The malicious HTTP request payload captured in the alert:
+
+```http
+GET /remote/fgt_lang?lang=/../../../../../../../dev/cmdb/sslvpn_websession HTTP/1.1
+Host: vpn.example.com
+User-Agent: Mozilla/5.0
+Accept: */*
+```
+
+---
+
+### Understanding CVE-2018-13379: The Vulnerability Explained
+
+Before continuing the investigation, it's essential to understand exactly what this vulnerability is and why it's so dangerous — because understanding the attack tells us what the attacker likely obtained.
+
+#### What is Fortinet SSL VPN?
+
+```
+Fortinet FortiOS SSL VPN = enterprise remote access solution
+Employees connect to company network from outside via browser
+The VPN portal runs on FortiGate firewall hardware
+Accessible from the internet on port 443 (HTTPS)
+```
+
+#### What is Path Traversal?
+
+A path traversal attack exploits insufficient input validation to access files outside the intended directory. The web server intends to serve files from its web root — but the attacker crafts a URL that navigates backwards through the directory structure using `../` sequences:
+
+```
+Normal request:
+GET /remote/login
+→ Server reads: /var/web/remote/login.html  ✅
+
+Path traversal attack:
+GET /remote/fgt_lang?lang=/../../../../../../../dev/cmdb/sslvpn_websession
+→ Each ../ goes up one directory level
+→ Eventually escapes the web root entirely
+→ Server reads: /dev/cmdb/sslvpn_websession  🚨
+```
+
+#### The Target File — Why It's Catastrophic
+
+```
+/dev/cmdb/sslvpn_websession
+```
+
+This is a **runtime memory file** on the FortiGate device containing the active VPN session database. In vulnerable versions, this file stores:
+
+```
+→ Usernames of ALL currently logged-in VPN users
+→ Plaintext passwords (not hashed, not encrypted)
+→ Active session tokens
+→ Source IP addresses of connected users
+→ Group memberships and access levels
+```
+
+In plain English: **every person currently connected to the VPN has their credentials sitting in this file in cleartext**. Reading this file gives an attacker a complete list of valid VPN credentials — ready to use immediately.
+
+#### Affected Versions
+
+```
+FortiOS 6.0.0 - 6.0.4
+FortiOS 5.6.3 - 5.6.7
+FortiOS 5.4.6 - 5.4.12
+```
+
+#### Why Was This Still Being Exploited in 2024?
+
+```
+→ Disclosed and patched in 2018
+→ Many organizations never applied the patch
+→ In 2020 FBI/CISA issued active exploitation warnings
+→ In 2021 a list of 500,000 Fortinet credentials was publicly leaked
+   → all stolen via this exact vulnerability
+→ In 2024 unpatched FortiGate devices still exist on the internet
+→ Attackers actively scan for them using Shodan/Censys
+```
+
+#### MITRE Mapping for This Vulnerability
+
+```
+T1190 — Exploit Public-Facing Application
+→ Exploiting the VPN portal accessible from the internet
+
+T1552.001 — Credentials in Files
+→ Reading sslvpn_websession to extract plaintext credentials
+
+T1078 — Valid Accounts
+→ Using stolen VPN credentials for initial access
+```
+
+---
+
+### Phase 3 — Source IP Pivot: Following the Attacker
+
+With the attacker IP confirmed as `185.203.116.55`, we pivoted to search all Wazuh alerts from this IP across the full timeframe — to see the complete picture of their activity:
+
+> 📸 *Screenshot: Wazuh — search bar showing 185.203.116.55, 3 hits, timeline showing spikes at Aug 20, Aug 26, and Aug 28*
+
+```
+Search query: 185.203.116.55
+Result:       3 hits across the timeframe
+Timeline:     Aug 20 → Aug 26 → Aug 28 (three distinct activity windows)
+```
+
+Three separate events spread across 8 days — not automated scanning, but a deliberate, staged attack with time between phases.
+
+---
+
+### Phase 4 — VPN Log Analysis: The Attacker Gets Inside
+
+Expanding the Aug 26 and Aug 28 alerts from the source IP search revealed VPN tunnel establishment logs — the moment the attacker transitioned from external attacker to internal threat:
+
+> 📸 *Screenshot: Wazuh — two VPN tunnel-up events from 185.203.116.55, showing henry.jason (India) and adm_eric (Korea)*
+
+```
+VPN Event 1 — Aug 26, 2024 @ 22:50:34:
+action:       tunnel-up
+user:         henry.jason          ← compromised account
+tunnelip:     10.16.18.17          ← internal IP assigned
+srccountry:   India                ← attacker location
+srcip:        185.203.116.55       ← same attacker IP
+logdesc:      SSL VPN tunnel up
+msg:          SSL tunnel established
+
+VPN Event 2 — Aug 28, 2024 @ 13:43:15:
+action:       tunnel-up
+user:         adm_eric             ← ADMIN account compromised
+tunnelip:     10.16.0.17           ← internal IP assigned
+srccountry:   Korea                ← attacker location changed
+srcip:        185.203.116.55       ← same attacker IP
+logdesc:      SSL VPN tunnel up
+msg:          SSL tunnel established
+```
+
+> ### 🔎 Understanding Source IP vs Tunnel IP
+>
+> These two IP addresses represent two completely different stages of the attack and it's critical to understand the distinction:
+>
+> **Source IP (`185.203.116.55`) = The attacker's real public IP**
+> This is the IP address the attacker used to connect to the VPN portal from the internet. It's their machine's address — visible to external firewall rules, geo-location services, and threat intelligence feeds. This is what you block at the perimeter.
+>
+> **Tunnel IP (`10.16.18.17` / `10.16.0.17`) = The attacker's identity inside the network**
+> After successful VPN authentication, the VPN server assigns the connecting client an internal IP address — just like DHCP assigns an IP to a device connecting to WiFi. This tunnel IP is what the attacker uses to communicate with internal systems. From the perspective of internal servers, traffic from this IP looks exactly like any other legitimate employee working remotely.
+>
+> Think of it this way:
+> ```
+> src_ip (185.203.116.55) = the attacker's car parked outside the building
+>                           → security sees this license plate at the gate
+>
+> tunnelip (10.16.18.17)  = the visitor badge issued after passing security
+>                           → inside the building, cameras track this badge
+>                           → they blend in with all other employees
+> ```
+>
+> For hunting **outside** the network: use `src_ip`
+> For hunting **inside** the network: use `tunnelip`
+
+The credentials used — `henry.jason` and `adm_eric` — were stolen from the `sslvpn_websession` file during the CVE-2018-13379 exploit on Aug 20. Six days elapsed between the credential theft and first use — suggesting the attacker took time to plan their intrusion.
+
+---
+
+### Phase 5 — Internal Recon: Mapping the Network
+
+With `henry.jason`'s tunnel IP (`10.16.18.17`) identified, we pivoted to search all internal traffic from this IP:
+
+> 📸 *Screenshot: Wazuh — filter 10.16.18.17, 61 hits, massive spike on Aug 27, selected fields showing data.dstip, data.filename, data.service, data.srcip*
+
+```
+Search query: 10.16.18.17
+Result:       61 hits
+Spike:        Aug 27 — 35+ events in short window
+```
+
+61 events from a single internal IP in one session is significant — this is an active attacker, not a legitimate user doing routine work.
+
+#### Step 5.1 — Vertical Scan: Profiling a Single Target
+
+The first wave of alerts showed the attacker performing a **vertical port scan** against `172.16.18.110` — hitting multiple services on the same target:
+
+> 📸 *Screenshot: Wazuh — Fortigate traffic alerts from 10.16.18.17 to 172.16.18.110, services FTP/RDP/SSH/SMTP all at same millisecond timestamp*
+
+```
+Source:      10.16.18.17   (henry.jason inside network)
+Destination: 172.16.18.110 (internal server)
+Timestamp:   23:01:00.906 → 23:01:00.909 (3ms window)
+Rule:        Fortigate: Traffic to be aware of
+
+Services probed:
+FTP    (port 21)   → can I steal files?
+RDP    (port 3389) → can I take remote control?
+SSH    (port 22)   → can I get a shell?
+SMTP   (port 25)   → is this an email server?
+```
+
+> ### 🔎 What is a Vertical Scan?
+> A vertical scan (also called a port scan) targets **one host across multiple ports**. The attacker is asking: "What services are running on this specific machine?" The millisecond-level timing is the giveaway — no human clicks that fast. This is an automated tool (nmap, masscan, or similar) systematically probing every port of interest on the target.
+
+#### Step 5.2 — Horizontal Scan: Mapping the Entire Subnet
+
+The second wave showed the attacker switching strategy — now performing a **horizontal scan** targeting FTP (port 21) across the entire `172.16.18.0/24` subnet:
+
+> 📸 *Screenshot: Wazuh — Fortigate traffic alerts from 10.16.18.17, FTP only, multiple destinations: 172.16.18.1, .2, .3, .4, .5, .6, .7, .8, .9, .10 all at same timestamp*
+
+```
+Source:      10.16.18.17
+Protocol:    FTP (port 21) only
+Timestamp:   23:01:00.911 → 23:01:00.913 (2ms window)
+Targets:
+  172.16.18.1
+  172.16.18.2
+  172.16.18.3
+  172.16.18.4
+  172.16.18.5
+  172.16.18.6
+  172.16.18.7
+  172.16.18.8
+  172.16.18.9
+  172.16.18.10
+```
+
+> ### 🔎 Vertical vs Horizontal Scan — The Key Difference
+>
+> ```
+> VERTICAL SCAN:
+> → One target, many ports
+> → Question: "What services does THIS machine have?"
+> → Used to: profile a specific target
+>
+> HORIZONTAL SCAN:
+> → One port, many targets
+> → Question: "Which machines on the network have THIS service?"
+> → Used to: find all machines running a specific service
+> ```
+>
+> Together, these two scan types give the attacker a complete network map — they know which hosts exist AND what services each one runs. The horizontal FTP scan tells us the attacker's intent: they're looking for FTP servers specifically, because FTP is a file transfer protocol — and files mean data to steal.
+
+---
+
+### Phase 6 — Data Exfiltration: 13 Files Stolen
+
+The Aug 27 spike in alerts told us something significant happened. Filtering by the attacker's tunnel IP, the FTP server, and the RETR command — we revealed the full extent of the data theft:
+
+> 📸 *Screenshot: Wazuh — filter data.srcip: 10.16.18.17 AND agent.ip: 172.16.18.110 AND rule.description: *RETR*, 13 hits, all ProFTPD File download events*
+
+```
+SPL Query:
+data.srcip: 10.16.18.17 
+AND agent.ip: 172.16.18.110 
+AND rule.description: *RETR*
+
+Result: 13 confirmed file downloads
+```
+
+> ### 🔎 What is the FTP RETR Command?
+> FTP (File Transfer Protocol) uses specific commands for file operations. `RETR` stands for **retrieve** — it's the command a client sends to download a file from an FTP server. Every `RETR` log entry in ProFTPD represents one complete file transfer. 13 RETR events = 13 files confirmed downloaded by the attacker. ProFTPD logs every RETR command with the filename, source IP, timestamp, and transfer status — making it an invaluable forensic source for data exfiltration investigations.
+
+#### Complete Exfiltration Log
+
+| Time (Aug 27) | Filename | Category | Risk |
+|---|---|---|---|
+| `00:20:45` | `dbbackup.zip` | Database backup | 🔴 Critical |
+| `00:20:45` | `dbbackup1.zip` | Database backup | 🔴 Critical |
+| `00:20:45` | `secrets.zip` | Secrets/keys | 🔴 Critical |
+| `00:20:45` | `secrets1.zip` | Secrets/keys | 🔴 Critical |
+| `00:25:45` | `report2024.csv` | Business data | 🔴 High |
+| `00:30:45` | `invoices_q3.xlsx` | Financial records | 🔴 High |
+| `00:35:45` | `credentials.json` | Plaintext credentials | 🔴🔴 Critical |
+| `00:40:45` | `nginx.conf` | Server configuration | 🔴 High |
+| `00:45:45` | `payroll_aug.pdf` | Employee payroll | 🔴 High |
+| `00:50:45` | `appconfig.yml` | App configuration | 🔴 High |
+| `00:55:45` | `image_backup.tar.gz` | Full system backup | 🔴 Critical |
+| `01:00:45` | `ssh_keys.pem` | SSH private keys | 🔴🔴 Critical |
+| `01:05:45` | `auditlog_2024.log` | Security audit logs | 🔴🔴 Critical |
+
+The exfiltration ran for **45 minutes** — from `00:20` to `01:05` — with files downloaded every 5 minutes in a systematic, methodical pattern. This was not rushed or opportunistic. The attacker knew what they wanted and took their time.
+
+> ### 🔎 Why are these specific files so dangerous?
+>
+> **`credentials.json`** — A JSON file containing plaintext credentials means the attacker now has usernames and passwords for additional systems — databases, applications, cloud services. Every system credential in this file is now compromised.
+>
+> **`ssh_keys.pem`** — SSH private keys allow passwordless authentication to any server that has the corresponding public key installed. The attacker can now SSH directly into internal servers without needing any password — bypassing all authentication controls.
+>
+> **`auditlog_2024.log`** — Stealing the audit log is an **anti-forensics move**. By reading the security logs, the attacker understands exactly what activity was being recorded — helping them understand what defenders can see and potentially plan how to cover their tracks in future operations.
+>
+> **`dbbackup.zip` / `dbbackup1.zip`** — Full database backups contain every record in the database — customer data, employee information, transaction history, application data. This is the crown jewel of most organizations.
+>
+> **`secrets.zip` / `secrets1.zip`** — Files explicitly named "secrets" typically contain API keys, encryption keys, service account credentials, or configuration secrets — granting access to third-party services and cloud infrastructure.
+
+---
+
+## ⏱️ Complete Attack Timeline
+
+| Date/Time | Phase | Event | Evidence Source |
+|---|---|---|---|
+| `Aug 20 @ 00:52:26` | 🔴 Initial Access | CVE-2018-13379 path traversal on `vpn.example.com:443` | Suricata IDS alert |
+| `Aug 20 @ 00:52:26` | 🔴 Credential Theft | `sslvpn_websession` returned (1248 bytes) — plaintext credentials stolen | Flow data: bytes_toclient |
+| `Aug 26 @ 22:50:34` | 🔴 VPN Intrusion | `henry.jason` VPN login from India (`185.203.116.55`) — tunnelip: `10.16.18.17` | Fortigate VPN log |
+| `Aug 26 @ 23:01:00` | 🔴 Recon — Vertical | Port scan of `172.16.18.110` — FTP/RDP/SSH/SMTP probed | Fortigate traffic log |
+| `Aug 26 @ 23:01:00` | 🔴 Recon — Horizontal | FTP scan across `172.16.18.1-10` subnet | Fortigate traffic log |
+| `Aug 27 @ 00:20:45` | 🔴 Exfiltration Begins | First 4 files downloaded from FTP `172.16.18.110` | ProFTPD RETR log |
+| `Aug 27 @ 00:35:45` | 🔴🔴 Credentials Stolen | `credentials.json` downloaded | ProFTPD RETR log |
+| `Aug 27 @ 01:00:45` | 🔴🔴 SSH Keys Stolen | `ssh_keys.pem` downloaded | ProFTPD RETR log |
+| `Aug 27 @ 01:05:45` | 🔴🔴 Anti-Forensics | `auditlog_2024.log` downloaded | ProFTPD RETR log |
+| `Aug 28 @ 13:43:15` | 🔴🔴 Admin Access | `adm_eric` VPN login from Korea (`185.203.116.55`) — tunnelip: `10.16.0.17` | Fortigate VPN log |
+
+---
+
+## 🧾 IOC Table
+
+| Type | Value | Description |
+|---|---|---|
+| IP | `185.203.116.55` | Attacker public IP — used for VPN access |
+| IP | `192.168.100.10` | Fortinet VPN server — exploited target |
+| IP | `10.16.18.17` | Tunnel IP — henry.jason inside network |
+| IP | `10.16.0.17` | Tunnel IP — adm_eric inside network |
+| IP | `172.16.18.110` | Internal FTP server — data exfiltration source |
+| Account | `henry.jason` | Compromised VPN user account |
+| Account | `adm_eric` | Compromised VPN admin account |
+| CVE | `CVE-2018-13379` | Fortinet SSL VPN path traversal |
+| URL | `/remote/fgt_lang?lang=/../../../../../../../dev/cmdb/sslvpn_websession` | Exploit URL |
+| File | `credentials.json` | Stolen plaintext credentials |
+| File | `ssh_keys.pem` | Stolen SSH private keys |
+| File | `dbbackup.zip` / `dbbackup1.zip` | Stolen database backups |
+| File | `secrets.zip` / `secrets1.zip` | Stolen secrets/keys |
+| File | `auditlog_2024.log` | Stolen audit logs |
+| Country | India / Korea | Attacker geo-locations |
+| Signature ID | `202513379` | Suricata rule that fired |
+
+---
+
+## 🗺️ MITRE ATT&CK Mapping
+
+| Tactic | Technique | ID | Evidence |
+|---|---|---|---|
+| Initial Access | Exploit Public-Facing Application | T1190 | CVE-2018-13379 on Fortinet VPN portal |
+| Credential Access | Credentials in Files | T1552.001 | `sslvpn_websession` file read via path traversal |
+| Initial Access | Valid Accounts | T1078 | `henry.jason` and `adm_eric` used for VPN login |
+| Discovery | Network Service Discovery | T1046 | Vertical + horizontal port scan of internal subnet |
+| Lateral Movement | Remote Services | T1021 | VPN tunnel used to access internal FTP server |
+| Exfiltration | Exfiltration Over Alternative Protocol | T1048 | 13 files exfiltrated via FTP RETR commands |
+| Defense Evasion | Indicator Removal | T1070 | `auditlog_2024.log` stolen — anti-forensics |
+
+---
+
+## 🚨 Immediate Response Actions
+
+| Priority | Action |
+|---|---|
+| 🔴 Immediate | **Patch CVE-2018-13379** — update FortiOS to a non-vulnerable version immediately |
+| 🔴 Immediate | **Disable `henry.jason` and `adm_eric`** — both accounts are fully compromised |
+| 🔴 Immediate | **Block `185.203.116.55`** at perimeter firewall and VPN gateway |
+| 🔴 Immediate | **Revoke all active VPN sessions** — force re-authentication across all users |
+| 🔴 Immediate | **Rotate ALL credentials** — `credentials.json` was stolen, assume all passwords compromised |
+| 🔴 Immediate | **Revoke and replace all SSH keys** — `ssh_keys.pem` was stolen |
+| 🟠 High | **Investigate `adm_eric` tunnel IP `10.16.0.17`** — admin access not yet fully investigated |
+| 🟠 High | **Audit FTP server `172.16.18.110`** — restrict access, review all user permissions |
+| 🟠 High | **Check for additional VPN logins** — stolen `credentials.json` may enable more access |
+| 🟠 High | **Preserve all logs** — Wazuh, Fortigate, ProFTPD for legal/forensic purposes |
+| 🟠 High | **Notify affected employees** — `payroll_aug.pdf` contains personal data |
+| 🟡 Medium | **Switch Suricata to IPS mode** — currently detection only, should be blocking |
+| 🟡 Medium | **Implement MFA on VPN** — stolen credentials alone would not be sufficient |
+| 🟡 Medium | **Restrict FTP access** — internal FTP should not be accessible from VPN tunnel IPs without additional controls |
+| 🟡 Medium | **Geo-block VPN access** — logins from India/Korea outside business hours should alert |
+
+---
+
+## 📋 What To Investigate Next
+
+The investigation is not complete. Several threads remain open:
+
+**1. adm_eric Activity (Critical Priority)**
+```
+tunnelip: 10.16.0.17
+→ What did the admin account access?
+→ Were additional systems compromised?
+→ Were any configurations changed?
+→ Was persistence established?
+Filter: data.srcip: 10.16.0.17
+```
+
+**2. Credentials.json Impact Assessment**
+```
+The stolen credentials.json may contain:
+→ Database passwords
+→ Application service accounts
+→ Cloud API keys
+→ Internal system passwords
+→ Hunt for new logins using these credentials across all systems
+```
+
+**3. SSH Keys Impact Assessment**
+```
+ssh_keys.pem stolen — identify:
+→ Which servers have this public key authorized
+→ Check ~/.ssh/authorized_keys on all internal servers
+→ Remove compromised public keys immediately
+```
+
+**4. Database Backup Assessment**
+```
+dbbackup.zip and dbbackup1.zip contain entire database
+→ Identify what data was in the database
+→ Assess breach notification obligations (GDPR/regulatory)
+→ Notify affected individuals if personal data was exposed
+```
+
+**5. Persistence Hunt**
+```
+Attacker had admin access (adm_eric) — check for:
+→ New user accounts created
+→ New scheduled tasks
+→ New services installed
+→ Firewall rule modifications
+→ Backdoors or webshells
+```
+
+---
+
+## 📝 Lessons Learned
+
+> **A six-year-old vulnerability brought down the entire security perimeter.**
+> CVE-2018-13379 was disclosed in 2018 and patched the same year. Six years later, an unpatched FortiGate device on the internet gave an attacker everything they needed — valid VPN credentials for multiple accounts, including an admin account. Once inside, the absence of network segmentation, FTP access controls, and multi-factor authentication meant nothing stood between the attacker and 13 sensitive files.
+
+Key takeaways:
+
+- **Patch management is not optional** — a six-year-old CVE should not exist in any production environment. Vulnerability scanning and mandatory patching SLAs would have prevented this entire incident
+- **IDS without IPS is half a solution** — Suricata detected the attack perfectly. But `action: allowed` means it watched the attack succeed without stopping it. Running Suricata in IPS mode would have blocked the exploit at the network level
+- **MFA on VPN is non-negotiable** — stolen credentials enabled full VPN access. With MFA, those credentials alone would be worthless
+- **Network segmentation limits blast radius** — the attacker moved directly from VPN tunnel to internal FTP server. Proper segmentation with firewall rules between VPN clients and internal servers would have required additional compromise steps
+- **FTP is an insecure protocol** — FTP transmits data in plaintext and has no built-in access controls beyond username/password. Replacing FTP with SFTP and restricting access to specific IPs would have prevented the exfiltration
+- **Audit logs must be protected** — the attacker stole `auditlog_2024.log`. Audit logs should be forwarded to an immutable, write-only SIEM in real time — making them impossible to steal or tamper with. In this case, Wazuh was already receiving logs — but the source log file on the FTP server was accessible
+
+---
+
+## 📚 References
+
+| Resource | Link |
+|---|---|
+| CVE-2018-13379 NVD Entry | [nvd.nist.gov](https://nvd.nist.gov/vuln/detail/CVE-2018-13379) |
+| MITRE T1190 — Exploit Public-Facing App | [attack.mitre.org](https://attack.mitre.org/techniques/T1190/) |
+| MITRE T1552 — Unsecured Credentials | [attack.mitre.org](https://attack.mitre.org/techniques/T1552/) |
+| MITRE T1078 — Valid Accounts | [attack.mitre.org](https://attack.mitre.org/techniques/T1078/) |
+| MITRE T1046 — Network Service Discovery | [attack.mitre.org](https://attack.mitre.org/techniques/T1046/) |
+| MITRE T1048 — Exfiltration Alt Protocol | [attack.mitre.org](https://attack.mitre.org/techniques/T1048/) |
+| Fortinet CVE-2018-13379 Advisory | [fortiguard.com](https://www.fortiguard.com/psirt/FG-IR-18-384) |
+| Wazuh Documentation | [documentation.wazuh.com](https://documentation.wazuh.com/) |
+| Suricata Documentation | [suricata.io](https://suricata.io/documentation/) |
+
+---
+
+*Writeup by: Moetez Bouchlaghem | SOC-Investigation-Lab*
