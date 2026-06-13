@@ -105,7 +105,8 @@ We opened the SYSTEM hive in Registry Explorer and navigated to:
 ROOT → ControlSet001 → Enum → USBSTOR
 ```
 
-> 📸 *Screenshot: Registry Explorer — SYSTEM hive loaded, USBSTOR key expanded showing Disk&Ven_VendorCo... → 563931126217413... → Device Parameters and Properties subkeys*
+> <img width="1031" height="626" alt="1" src="https://github.com/user-attachments/assets/4c587c29-844b-4b35-a689-28423c21c868" />
+
 
 ---
 
@@ -142,6 +143,9 @@ This identifies the TYPE and MODEL of USB device — in our case, a VendorCo bra
 
 **Level 2 — `563931126217413...` (Serial Number)**
 
+> <img width="1127" height="469" alt="2" src="https://github.com/user-attachments/assets/100542ab-fb63-4bc2-816b-2cd13152967c" />
+
+
 This is the USB device's unique serial number — burned into the device's firmware at manufacturing. Every USB drive has a different one. Forensically, this is the device's fingerprint:
 ```
 Full key name: 563931126217413391 70
@@ -177,7 +181,8 @@ Each `{GUID}` subfolder under Properties contains specific device attributes:
 
 Expanding `{83da6326-...}` reveals the device's connection history through timestamp subkeys:
 
-> 📸 *Screenshot: Registry Explorer — {83da6326-...} expanded showing subkeys 0003, 000A, 0064, 0065, 0066 with 0064 selected and Value showing 2024-07-15 03:36:22*
+> <img width="1031" height="626" alt="1" src="https://github.com/user-attachments/assets/4a05779a-5785-4e66-b661-340633d5a265" />
+
 
 ```
 {83da6326-...}
@@ -211,8 +216,6 @@ First Install: 2024-07-15 03:36:22 AM
 
 #### Device Values at the Serial Number Level
 
-> 📸 *Screenshot: Registry Explorer — serial number key selected, right panel showing HardwareID, CompatibleIDs, ClassGUID, FriendlyName: VendorCo Pro..., ContainerID values*
-
 ```
 HardwareID:    USBSTOR\Disk...
 ClassGUID:     {4d36e967-...}     ← Windows Disk Drive class
@@ -232,7 +235,8 @@ With the USB device identified in the registry, the next step was to confirm the
 
 This evidence comes from the **Microsoft-Windows-Ntfs/Operational** event log — a specialized Windows log that records NTFS filesystem operations including volume mount and dismount events.
 
-> 📸 *Screenshot: Event Viewer — Microsoft-Windows-Ntfs/Operational log showing 26 events, Event ID 142 at 7/15/2024 3:36:24 AM highlighted, details panel showing volume E: and GUID*
+> <img width="1015" height="632" alt="4" src="https://github.com/user-attachments/assets/3447d66b-e896-43ee-94fb-b90e670b3675" />
+
 
 ```
 Log:       Microsoft-Windows-Ntfs/Operational
@@ -293,7 +297,10 @@ Computer: DESKTOP-ND6FH5D
 
 The USB was mounted as `E:`. Now we needed to know whether anyone actually opened it and navigated its contents — and if so, exactly where they went. This is where **ShellBags** become invaluable.
 
-> 📸 *Screenshot: ShellBags Explorer — UsrClass.dat loaded, tree showing Desktop → This PC → E: → NewProject_Hires_Data → Payroll_NewHires → Payroll_NewHires → Payroll_data1, with timestamps in right panel*
+> <img width="788" height="314" alt="6" src="https://github.com/user-attachments/assets/85b3446b-5f7c-4c47-9830-2df58345e5e8" />
+
+> <img width="1026" height="629" alt="555" src="https://github.com/user-attachments/assets/e26ed34b-9454-4a3f-88cd-38a7359c47e3" />
+
 
 > ### 🔎 What are ShellBags?
 > ShellBags are registry entries that Windows automatically creates whenever a user opens a folder in Windows Explorer. Windows stores each folder's display preferences (icon size, column widths, sort order) so the folder looks the same next time it's opened. As a forensic artifact, ShellBags are extraordinarily valuable because:
@@ -394,7 +401,8 @@ ShellBags proved which folders were accessed. But we needed to go deeper — whi
 >
 > **Critical forensic value:** Jump Lists persist even after the source file is deleted. The file `Employee_PII.csv` may no longer exist anywhere — but the Jump List proves it was opened, when it was opened, and with which application.
 
-> 📸 *Screenshot: JLECmd output — AutomaticDestinations folder showing 5 files, all modified 7/15/2024 6:38-6:39 AM, listing Quick Access, Notepad 64-bit, Windows Explorer entries*
+>  <img width="1027" height="634" alt="7" src="https://github.com/user-attachments/assets/f196b003-4a4f-4c4d-8c38-f3fac39d933f" />
+
 
 **AutomaticDestinations Files Found:**
 ```
@@ -407,7 +415,8 @@ f18460fded109990.automaticDestinations → Windows Connected Dev  6/3/2023 1:16 
 
 **Notepad 64-bit Jump List — Entry #0001:**
 
-> 📸 *Screenshot: JLECmd — Notepad 64-bit Jump List expanded showing Entry #0001 and #0002, bottom panel showing LocalPath: E:\NewProject_Hires_Data\Payroll_NewHires\Payroll_NewHires\Payroll_data1\Employee_PII.csv*
+> <img width="1019" height="603" alt="9" src="https://github.com/user-attachments/assets/64a24eb8-1ef2-4c08-a0a8-3ce7474b35da" />
+
 
 ```
 App:                  Notepad 64-bit
@@ -427,7 +436,8 @@ LocationFlags:          VolumeIdAndLocalBasePath
 
 **Notepad 64-bit Jump List — Entry #0002:**
 
-> 📸 *Screenshot: JLECmd — Entry #0002 showing LocalPath: E:\NewProject_Hires_Data\Payroll_NewHires\Payroll_NewHires\Employees_USDAccounts.csv*
+>  <img width="1028" height="635" alt="77" src="https://github.com/user-attachments/assets/63ad3848-8c6e-4c3a-a847-fd0518f75185" />
+
 
 ```
 Entry #0002:
@@ -445,7 +455,8 @@ LocationFlags:   VolumeIdAndLocalBasePath
 
 The Jump List properties panel provided the final pieces — machine identity, MAC address, and precise access timestamps:
 
-> 📸 *Screenshot: JLECmd — Properties panel showing Hostname: desktop-nd6fh5d, MAC: 00:0c:29:eb:ef:7f, DestList Last modified: 2024-07-15 03:38:07, Interaction count: 1, File droid matching NTFS volume GUID*
+>  <img width="1023" height="608" alt="10" src="https://github.com/user-attachments/assets/acba5d8a-fad2-4b41-aaaa-342e4ae0e7b0" />
+
 
 ```
 Entry number:           1
