@@ -113,7 +113,8 @@ What makes this event forensically significant is not just that a USB was plugge
 
 Wazuh captured this through SentinelOne's device activity telemetry:
 
-> 📸 *Screenshot: Wazuh event — data.activity_type: drive_mount, data.device_vendor: SanDisk, data.device_serial_number: SN1234567890, data.drive_letter: F:, data.username: j.doe, data.mount_time: 2024-08-22T14:12:54*
+> <img width="1082" height="584" alt="1" src="https://github.com/user-attachments/assets/b7770d1e-7918-40f9-95bd-b98c93d6fc0d" />
+
 
 ```
 agent.name              → wazuh-server
@@ -151,6 +152,12 @@ data.timestamp          → Aug 22, 2024 @ 16:12:54.382
 
 > ### 🔎 `data.product: SentinelOne` — The EDR That Will Track Everything
 > SentinelOne is the endpoint detection and response (EDR) agent deployed on `HR-WS-124`. Unlike traditional antivirus that only scans files, an EDR watches every process, every file operation, every network connection, and every device event in real time. Every piece of evidence in this investigation flows through SentinelOne's telemetry into Wazuh. Without it, most of what we're about to trace would be invisible.
+>
+> 🔎 EPP vs EDR — Two Layers, One Platform
+SentinelOne operates as both an EPP (Endpoint Protection Platform) and an EDR (Endpoint Detection and Response) — and this investigation shows exactly where each layer begins and ends.
+The EPP is the shield — it tries to block threats before they execute. When static_ai flagged encryptor.exe and returned status: resolved, that was the EPP doing its job.
+The EDR is the eye — it records everything regardless of what the EPP did. Every ransom note drop, every encrypted file batch, every AnyDesk installation — all of that telemetry flowing into Wazuh is the EDR giving us the full picture.
+The gap between them is what this case is built on: the EPP flagged the binary, but the EDR showed us the damage happened anyway. Detection is not prevention. The EDR is what made this investigation possible.
 
 **At this point, the USB is mounted. The attacker's weapon is inside the network perimeter. `j.doe` has no idea what just arrived.**
 
@@ -160,7 +167,8 @@ data.timestamp          → Aug 22, 2024 @ 16:12:54.382
 
 Within moments of the USB mounting, SentinelOne's static AI engine fired. The event type changed from `device_activity` to `threat_detected` — and the picture became immediately clear.
 
-> 📸 *Screenshot: Wazuh event — data.event_type: threat_detected, data.threat_name: Ransomware.Win32.Locky, data.process_name: encryptor.exe, data.process_path: F:\data\j.doe\AppData\Roaming\encryptor.exe, data.detection_engine: static_ai, data.mitre_techniques: T1486, T1059.001*
+>  <img width="841" height="586" alt="2" src="https://github.com/user-attachments/assets/f18ae2f8-d7e9-4dee-8cd9-85b5908c92b7" />
+
 
 ```
 data.event_type         → threat_detected
@@ -216,7 +224,8 @@ Before diving into the flood of events that followed, we needed to set the right
 
 We took the USB mount timestamp — `14:12:54 UTC` — and opened Wazuh Discover with the index `wazuh-alerts-*`, setting the time window to **USB mount time + 30 minutes**.
 
-> 📸 *Screenshot: Wazuh Discover — DQL search, time range Aug 22, 2024 @ 15:00:00 → 15:30:00 (UTC+2), 13 hits returned, histogram showing spike at ~15:20*
+> <img width="1359" height="447" alt="12" src="https://github.com/user-attachments/assets/bf59eafa-62c3-41db-a22f-4c21d5b13b14" />
+
 
 > ### 🔎 Why +30 Minutes? The Forensic Logic Behind the Window
 > Ransomware doesn't wait. Locky in particular begins encryption within seconds to minutes of execution. A 30-minute post-infection window captures the complete burst cycle:
@@ -256,15 +265,20 @@ Ransomware announces its own crime scene. Every directory `encryptor.exe` encryp
 
 SentinelOne logged each note creation as a `file_creation_detected` event, with `data.malicious_process: encryptor.exe` providing direct process attribution. Five directories were confirmed hit:
 
-> 📸 *Screenshot: Wazuh event — data.event_type: file_creation_detected, data.created_file: C:\Shared\Sales\README.TXT, data.malicious_process: encryptor.exe, data.related_threat: Ransomware.Win32.Locky, data.timestamp: Aug 22, 2024 @ 16:48:12.367*
+> <img width="1092" height="504" alt="3" src="https://github.com/user-attachments/assets/c5db23d7-2342-4f4c-a362-d8f275ad48f3" />
 
-> 📸 *Screenshot: Wazuh event — data.created_file: D:\Backups\Personal\README.TXT, data.timestamp: Aug 22, 2024 @ 16:48:12.492*
 
-> 📸 *Screenshot: Wazuh event — data.created_file: C:\Users\j.doe\Documents\README.TXT, data.timestamp: Aug 22, 2024 @ 16:48:12.001*
+> <img width="1091" height="582" alt="4" src="https://github.com/user-attachments/assets/70c21d68-0e4f-4892-89d6-ee66ed3e8f64" />
 
-> 📸 *Screenshot: Wazuh event — data.created_file: C:\Users\j.doe\Desktop\README.TXT, data.timestamp: Aug 22, 2024 @ 16:48:12.123*
 
-> 📸 *Screenshot: Wazuh event — data.created_file: C:\Users\j.doe\Downloads\README.TXT*
+> <img width="1092" height="585" alt="5" src="https://github.com/user-attachments/assets/0db44164-28ec-4636-bf1a-a42025289f37" />
+
+
+>  <img width="1107" height="555" alt="6" src="https://github.com/user-attachments/assets/7dbdd540-ab60-46d5-960e-b895da5a4557" />
+
+
+> <img width="1081" height="588" alt="8" src="https://github.com/user-attachments/assets/36c3f55e-faab-43de-9ddf-517b02e74c26" />
+
 
 **Confirmed ransom note locations:**
 
@@ -312,9 +326,11 @@ C:\Users\j.doe\Downloads\README.TXT     → 14:48:12.??? UTC
 
 The most damaging phase of the attack arrived at `13:20:06.945 UTC` — a simultaneous burst of six encryption batch events, all fired within the same millisecond, across three parallel SentinelOne detection threads.
 
-> 📸 *Screenshot: Wazuh Discover — three rows at Aug 22, 2024 @ 15:20:06.945, each showing data.encryption_detected: true, data.message: Ransomware - Encrypt File Activity Detected, with data.encrypted_files listing multiple .docx files per row*
+> <img width="1116" height="414" alt="7" src="https://github.com/user-attachments/assets/0bfd2cfc-f32a-4fa9-8a5a-df02d542e9c5" />
 
-> 📸 *Screenshot: Additional three rows at 15:20:06.945 showing Batch 4, 5, and 6 encrypted file lists*
+
+> <img width="1084" height="421" alt="9" src="https://github.com/user-attachments/assets/f134cbe8-6361-4476-a479-baf6cbe716c2" />
+
 
 > ### 🔎 Six Batches, One Millisecond — Multi-Threaded Ransomware in Action
 > Modern ransomware doesn't encrypt files one by one in a single queue — it spawns multiple threads simultaneously, each processing a batch of files in parallel. The six events we see at the exact same timestamp (`15:20:06.945`) represent six concurrent encryption threads that SentinelOne detected and reported to Wazuh simultaneously.
@@ -429,7 +445,8 @@ E:\Backup\User\Notes.docx
 
 At `14:58:17 UTC` — exactly ten minutes after the encryption wave — a Windows Installer event fired. AnyDesk Remote Desktop was silently installed on `HR-WS-124` via an MSI package.
 
-> 📸 *Screenshot: Wazuh event — data.win.system.message: "Windows Installer installed the product. Product Name: AnyDesk Remote Desktop.", data.win.system.providerName: MsiInstaller, rule.description: Application installed AnyDesk Remote Desktop, rule.id: 60617, rule.level: 3, timestamp: Aug 22, 2024 @ 16:58:17.862*
+> <img width="1097" height="587" alt="10 anydesck" src="https://github.com/user-attachments/assets/7b34d495-3d83-4885-9772-837e2af9c9b9" />
+
 
 ```
 data.win.system.message       → "Windows Installer installed the product.
@@ -486,7 +503,8 @@ With the primary machine investigation complete, we asked the most important que
 
 We pivoted in Wazuh Discover, searching the entire `wazuh-alerts-*` index using the USB's unique serial number as the search key, across a 25-hour window.
 
-> 📸 *Screenshot: Wazuh Discover — DQL query: *SN1234567890*, time range Aug 22, 2024 @ 15:00 → Aug 23, 2024 @ 16:00, 2 hits returned, histogram showing both events clustered at 15:00*
+> <img width="1356" height="456" alt="11 expand" src="https://github.com/user-attachments/assets/41e8db4d-474b-4f38-afcd-03cf1d45c538" />
+
 
 **DQL Query used:**
 ```
@@ -504,7 +522,8 @@ We pivoted in Wazuh Discover, searching the entire `wazuh-alerts-*` index using 
 
 At first glance, the result seemed to confirm a contained incident — 2 hits, both clustered at `15:00`. But the critical step was not reading the count. It was **opening the results table**.
 
-> 📸 *Screenshot: Wazuh Discover results table — two rows: (1) Aug 22 @ 15:00:16.299 — HR-WS-124 — j.doe — 10.0.12.45 — SN1234567890; (2) Aug 22 @ 15:50:03.629 — FIN-WS-301 — a.smith@newcorp.com — 10.1.55.78 — SN1234567890*
+> <img width="1127" height="308" alt="1226" src="https://github.com/user-attachments/assets/f3238b6a-507a-4090-ae4e-a8dfa5e2e644" />
+
 
 | Time | `data.agent_name` | `data.username` | `data.device_ip` | `data.device_serial_number` |
 |---|---|---|---|---|
