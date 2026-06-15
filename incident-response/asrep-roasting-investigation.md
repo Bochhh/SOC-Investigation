@@ -185,7 +185,8 @@ The investigation began at the Domain Controller — the nerve center of all Ker
 
 We opened the DC Security event log in **Event Log Explorer** and applied our first filter:
 
-> 📸 *Screenshot: Event Log Explorer — Filter dialog showing Event ID 4768, Text in description: "Pre-Authentication Type: 0"*
+> <img width="797" height="594" alt="1" src="https://github.com/user-attachments/assets/1746aceb-8aba-4d7a-a5df-dbd982fc0986" />
+
 
 ```
 Filter applied:
@@ -204,13 +205,15 @@ Text in description:  Pre-Authentication Type: 0
 
 **Results — Three Critical Events Found:**
 
-> 📸 *Screenshot: Event Log Explorer — 4768 events list showing multiple entries on 10/5/2024 for Corrado account*
+>  
 
 ---
 
 #### Event 1 — 2:39:42 PM (Reconnaissance)
 
-> 📸 *Screenshot: Event Log Explorer — EID 4768 at 2:39:42 PM expanded, showing Corrado, ::ffff:192.168.110.129, Encryption 0x12, Ticket Options 0x10*
+> <img width="533" height="205" alt="1111111" src="https://github.com/user-attachments/assets/ea0d36e7-9110-46c8-81f3-b5fd5375e6ec" />
+
+
 
 ```
 Time:                    2024-10-05 14:39:42
@@ -241,7 +244,8 @@ Pre-Authentication Type: 0     ← no pre-auth
 
 #### Event 2 — 2:40:56 PM (Legitimate Login — Baseline)
 
-> 📸 *Screenshot: Event Log Explorer — EID 4768 at 2:40:56 PM expanded, showing Corrado, ::ffff:192.168.110.128, Encryption 0x12, Ticket Options 0x40810010*
+> <img width="1025" height="583" alt="3" src="https://github.com/user-attachments/assets/82e0771e-f775-402c-b311-9752bf74e2ec" />
+
 
 ```
 Time:                    2024-10-05 14:40:56
@@ -274,7 +278,8 @@ Pre-Authentication Type: 0     ← no pre-auth (account misconfiguration)
 
 #### Event 3 — 2:42:44 PM (The AS-REP Roasting Attack) 🚨
 
-> 📸 *Screenshot: Event Log Explorer — EID 4768 at 2:42:44 PM expanded, showing Corrado, ::ffff:192.168.110.129, Encryption 0x17 highlighted, Ticket Options 0x50800000*
+> <img width="899" height="584" alt="2" src="https://github.com/user-attachments/assets/549c3822-30c7-481e-8e16-dd1fe06b8e88" />
+
 
 ```
 Time:                    2024-10-05 14:42:44
@@ -345,7 +350,8 @@ With the AS-REP Roasting confirmed, the next question was: did the attacker use 
 
 We filtered for Event ID 4769:
 
-> 📸 *Screenshot: Event Log Explorer — Filter showing Event ID 4769, results listing multiple events for Corrado account*
+>  <img width="820" height="608" alt="5" src="https://github.com/user-attachments/assets/28c1020b-95dc-4bf1-b362-fa973a20200c" />
+
 
 > ### 🔎 What is Event ID 4769?
 > EID 4769 is logged every time a Kerberos Service Ticket (TGS) is requested — in other words, when an authenticated user wants to access a specific resource (file server, SQL server, web app). This event tells us what services a user is accessing and from which machine. In lateral movement investigations, we look for:
@@ -354,6 +360,12 @@ We filtered for Event ID 4769:
 > - With RC4 encryption (0x17) — indicating Kerberoasting or Pass-the-Ticket
 
 **Results — All 4769 Events from Corrado:**
+
+> <img width="883" height="364" alt="555555" src="https://github.com/user-attachments/assets/3123159d-a7b9-4c6c-a4d0-b75df80b5b5b" />
+
+
+> <img width="930" height="581" alt="55" src="https://github.com/user-attachments/assets/fcc939f3-8601-4204-9eeb-fb9b6d987801" />
+
 
 ```
 2:19:15 PM (x4) → from .128 → 0x12 AES256
@@ -372,7 +384,12 @@ We filtered for Event ID 4769:
 > ### 🔎 Why All 4769 Events Are Legitimate
 >
 > Every single 4769 event showed three indicators of legitimate traffic:
->
+
+> <img width="865" height="651" alt="4" src="https://github.com/user-attachments/assets/4b0edfce-89bb-4aaa-9e0b-44e87c477a2d" />
+
+> <img width="1083" height="424" alt="44" src="https://github.com/user-attachments/assets/b1fe0d9f-983b-4561-9f6f-89d90486432a" />
+
+
 > **Source IP: `.128`** — All service ticket requests came from Corrado's own workstation, not the attacker's `.129`. No 4769 events were observed from the attacker's machine.
 >
 > **Encryption: `0x12` (AES256)** — Standard Windows encryption for all requests. No RC4 (0x17) service ticket requests were observed — which would indicate Kerberoasting or Pass-the-Ticket.
@@ -395,7 +412,8 @@ The absence of 4769 events from `.129` directed us to the workstation logs. If t
 
 We opened the workstation Security log and applied two filters:
 
-> 📸 *Screenshot 1: Event Log Explorer — First filter: Event ID 4624, Logon Type 3*
+>  <img width="868" height="635" alt="6" src="https://github.com/user-attachments/assets/750b1894-4675-44cc-aeb6-883eef6601e7" />
+
 
 **First filter:**
 ```
@@ -403,7 +421,8 @@ Event ID:    4624  (Successful Logon)
 Logon Type:  3     (Network logon)
 ```
 
-> 📸 *Screenshot 2: Event Log Explorer — Second filter added: Source Network Address: 192.168.110.129*
+>  <img width="882" height="510" alt="7" src="https://github.com/user-attachments/assets/a0af115e-141d-43b8-a299-077b8ea07802" />
+
 
 **Second filter added:**
 ```
@@ -427,7 +446,8 @@ Source Network Address: 192.168.110.129
 
 **Critical Finding:**
 
-> 📸 *Screenshot 3: Event Log Explorer — EID 4624 event expanded showing Authentication Package: NTLM, Package Name: NTLM V2, Source: 192.168.110.129, Process ID: 0x0*
+> <img width="1058" height="473" alt="7777" src="https://github.com/user-attachments/assets/e5fd5e77-b6e0-4708-9bf7-039fb0400ce3" />
+
 
 ```
 Event ID:               4624
@@ -461,7 +481,8 @@ Process Name:           (blank)
 
 With lateral movement confirmed via NTLM, we needed to find what the attacker executed once they had access. We filtered for Event ID 4688 — process creation events:
 
-> 📸 *Screenshot: Event Log Explorer — EID 4688 filter results showing processes at 2:07 PM timeframe*
+> <img width="907" height="241" alt="8" src="https://github.com/user-attachments/assets/a0072160-4063-4dfc-8d06-396fc0c55501" />
+
 
 ```
 Pre-attack processes found (2:07 PM):
@@ -528,7 +549,8 @@ Prefetch is Windows' secret forensic gift. When the Security log fails us, Prefe
 
 We parsed the Prefetch directory using **PECmd**:
 
-> 📸 *Screenshot: Terminal — PECmd command: PECmd.exe -d "C:\Users\LetsDefend\Desktop\ChallengeFile\AS-REP\corrado\prefetch\" --csv C:\Users\LetsDefend\Desktop\ChallengeFile\csvf\investigation.csv*
+>  <img width="1009" height="88" alt="9" src="https://github.com/user-attachments/assets/13e5a8bd-0480-4dc3-899c-1405605d5480" />
+
 
 ```bash
 PECmd.exe -d "C:\Users\LetsDefend\Desktop\ChallengeFile\AS-REP\corrado\prefetch\" \
@@ -542,7 +564,11 @@ CSV timeline output saved to investigation.csv
 
 We opened `investigation.csv` in **Timeline Explorer** and sorted by `LastRun` timestamp, correlating with our attack window (after 2:42:44 PM):
 
-> 📸 *Screenshot: Timeline Explorer — investigation.csv loaded, sorted by LastRun, showing XYIWCCCL.EXE, CMD.EXE, WHOAMI.EXE, DLLHOST.EXE entries around 3:01 PM*
+>  <img width="1059" height="638" alt="10 OPEN TIMELINE " src="https://github.com/user-attachments/assets/72e821fe-12a7-4f6d-a35c-635e75935720" />
+
+
+> <img width="997" height="230" alt="11" src="https://github.com/user-attachments/assets/ab828685-195a-4439-ac9c-e0d82dee87fa" />
+
 
 ---
 
