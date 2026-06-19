@@ -132,7 +132,8 @@ File name:    C:\Users\CyberJunkie\Downloads\MailDownloads\Security Awareness.do
 Deleted on:   2022-08-21 13:03:33
 ```
 
-> 📸 *Screenshot: RBCmd output showing deleted Security Awareness.docx from MailDownloads folder with deletion timestamp 2022-08-21 13:03:33*
+>  <img width="966" height="405" alt="2" src="https://github.com/user-attachments/assets/3f8489d0-7227-4d66-a257-2d5178321395" />
+
 
 **What this tells us:**
 
@@ -171,19 +172,24 @@ While the Recycle Bin showed the deletion, the MFT (Master File Table) revealed 
 
 **Using MFT Explorer to examine file creation timestamps:**
 
-> 📸 *Screenshot: MFT Explorer showing folder/file tree with SecurityPatch.exe highlighted in red*
+> <img width="758" height="273" alt="4" src="https://github.com/user-attachments/assets/21f836d1-d2e2-408b-89fe-4712ef90a537" />
 
 ```
 File: SecurityPatch.exe
 Parent Path: C:\Users\CyberJunkie\Desktop\
 
 MFT Entry Timestamps:
-  $STANDARD_INFORMATION (SI):  2021-12-25 15:34:32  ← FAKE (Christmas day!)
+  $STANDARD_INFORMATION (SI):  2021-12-25 15:34:32  ← FAKE 
   $FILE_NAME (FN):             2022-08-21 13:02:23  ← REAL
 
 Modified timestamp: 2021-12-25 15:34:32
 Created timestamp:  2022-08-21 13:02:23
 ```
+
+#### How SecurityPatch.exe Was Delivered
+
+SecurityPatch.exe was **dropped directly by the malicious macro code inside Security Awareness.docx** — when the user opened the phishing document, either a VBA macro executed automatically (if macros were enabled) or the document exploited a vulnerability in Microsoft Word (such as CVE-2017-0199 or similar) to achieve code execution without user interaction. The macro/exploit then used Windows API calls (`CreateFileA`, `WriteFile`) to write the binary payload to disk at `C:\Users\CyberJunkie\Desktop\SecurityPatch.exe` — a location accessible to the user but appearing legitimate as a system utility. This is why the file appeared on the Desktop on 2022-08-21 13:02:23, precisely when the phishing document was opened, before being deleted 1 minute later (13:03:33) to cover the attacker's tracks.
+
 
 **What the timestomp reveals:**
 
@@ -268,11 +274,13 @@ Generated files:
 - Amcache_ShortCuts.csv
 ```
 
-> 📸 *Screenshot: AmcacheParser running with command output showing version info and processing status*
+> <img width="966" height="223" alt="3" src="https://github.com/user-attachments/assets/b6861810-3341-4804-8353-2b89d6c10119" />
+
 
 **Searching for SecurityPatch.exe in Amcache output:**
 
-> 📸 *Screenshot: CSV spreadsheet showing Amcache entries, row 39 highlighted showing c:\users\cyberjunkie\desktop\securitypatch.exe with timestamp 2022-09-09 13:25:09*
+> <img width="930" height="44" alt="333" src="https://github.com/user-attachments/assets/10276e45-fc13-4880-ba61-46c5054eb903" />
+
 
 ```
 Row 39 — Critical Finding:
@@ -392,7 +400,8 @@ HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\
 Image File Execution Options\explorer.exe
 ```
 
-> 📸 *Screenshot: Registry Explorer showing Image File Execution Options branch expanded, explorer.exe subkey highlighted*
+> <img width="1081" height="658" alt="5" src="https://github.com/user-attachments/assets/00a76508-77c2-4e79-a3c2-4277ffb1edfb" />
+
 
 **Key Contents:**
 
@@ -450,7 +459,8 @@ HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\
 SilentProcessExit\explorer.exe
 ```
 
-> 📸 *Screenshot: Registry Explorer showing SilentProcessExit branch, explorer.exe subkey expanded showing ReportingMode and MonitorProcess values*
+>  <img width="1029" height="641" alt="6" src="https://github.com/user-attachments/assets/f87015ef-fb77-4bc5-8d18-0784df8a9e65" />
+
 
 **Key Contents:**
 
@@ -525,7 +535,8 @@ Likely sequence:
 
 We confirmed GetPatch.exe actually existed in the Documents folder using MFT Explorer:
 
-> 📸 *Screenshot: MFT Explorer showing Documents folder structure with GetPatch.exe highlighted, showing creation timestamps*
+>  <img width="1028" height="470" alt="7" src="https://github.com/user-attachments/assets/fb6286b4-ab94-4f52-bb56-9b73efc932e4" />
+
 
 ```
 File: GetPatch.exe
@@ -585,7 +596,8 @@ C:\Windows\System32\winevt\Logs\
 Microsoft-Windows-TerminalServices-RDPClient\Operational
 ```
 
-> 📸 *Screenshot: Event Viewer showing TerminalServices-RDPClient/Operational log with multiple events, Event ID 1102 highlighted showing connection to 192.168.18.8*
+> <img width="1021" height="629" alt="8" src="https://github.com/user-attachments/assets/d6f5d5fe-306f-4a1d-a7c4-cd37313be3b3" />
+
 
 **Key Event ID 1102 — Multi-Transport Connection:**
 
@@ -660,13 +672,19 @@ C:\Users\CyberJunkie\AppData\Local\Microsoft\Terminal Server Client\Cache\
 > bmc-tools.py -s Cache0000.bin -d output_directory
 > ```
 
+>  <img width="963" height="175" alt="9" src="https://github.com/user-attachments/assets/f019485b-fabb-4581-a921-4f278743cb73" />
+
 **Analysis Results:**
 
 Extracted bitmap tiles revealed the following attacker activities on 192.168.18.8:
 
 **Tile 1 — Command Prompt with `net` command:**
 
-> 📸 *Screenshot: Extracted bitmap showing "m32>net" command prompt output*
+
+> <img width="482" height="331" alt="10" src="https://github.com/user-attachments/assets/5ef880a7-6fea-4945-bfd6-b137fb0fda38" />
+
+> <img width="595" height="298" alt="1010" src="https://github.com/user-attachments/assets/5e477d33-1683-42b0-a9ca-1582ba4e08b3" />
+
 
 ```
 Command: net localgroup
@@ -689,7 +707,11 @@ Command: net localgroup (repeated)
 
 **Tile 5-6 — Download and Execution of Mimikatz:**
 
-> 📸 *Screenshot: Bitmap tiles showing "download" "download mimikatz" "ad mimic" "ad mimik" "atz" "atz binary" "atz.exe"*
+>  <img width="637" height="375" alt="p1" src="https://github.com/user-attachments/assets/4377506c-7cf2-43a2-9e04-6902c5048dd1" />
+
+> <img width="566" height="349" alt="p4" src="https://github.com/user-attachments/assets/78a39416-9ac6-4c6c-a4fa-c21cabc229b1" />
+
+> <img width="287" height="229" alt="p6" src="https://github.com/user-attachments/assets/41d8e618-ccc0-407b-a0e8-861cde58ed8f" />
 
 ```
 Commands executed:
@@ -714,7 +736,8 @@ MITRE: T1003.001 → OS Credential Dumping: LSASS Memory
 
 **Tile 7-8 — PowerSploit/PowerView Execution:**
 
-> 📸 *Screenshot: Bitmap showing "PowerSploit/PowerView.ps1" text*
+> <img width="163" height="50" alt="12" src="https://github.com/user-attachments/assets/9fe7c472-9298-442b-a52c-94f500d1758f" />
+
 
 ```
 Tool: PowerSploit (PowerShell post-exploitation framework)
@@ -792,7 +815,8 @@ Having established RDP lateral movement, the attacker needed elevated privileges
 
 **Findings — Event ID 7045 (Suspicious Service Creation):**
 
-> 📸 *Screenshot: DeepBlueCLI output showing Event ID 7045 with service name "kyvckn" and command "cmd.exe /c echo kyvckn > \\.\pipe\kyvckn"*
+> <img width="997" height="462" alt="20" src="https://github.com/user-attachments/assets/7dae4d96-f2c6-4659-85ef-afabc20d5957" />
+
 
 ```
 Event ID:        7045
@@ -1093,5 +1117,4 @@ Key takeaways:
 ---
 
 *Writeup by: Moetez Bouchlaghem*
-*SOC-Investigation-Lab | GhnimiWael*
 *Lab Source: https://app.letsdefend.io/challenge/windows-forensics*
