@@ -131,7 +131,14 @@ The investigation began by analyzing Windows Security event logs to identify whe
 Windows Logs → Security → Event ID 4624
 ```
 
-> 📸 *Screenshot: Event Viewer showing multiple Event ID 4624 entries, with ANONYMOUS LOGON highlighted at timestamp 2024-10-05 2:48:58 PM*
+> <img width="883" height="458" alt="01" src="https://github.com/user-attachments/assets/bc721a1a-da97-45ee-9c4f-21c515d01fba" />
+
+> <img width="878" height="455" alt="1" src="https://github.com/user-attachments/assets/e8b8619e-afe4-4cfa-871a-ffd70b231b2d" />
+
+> <img width="864" height="433" alt="2" src="https://github.com/user-attachments/assets/c4960da8-554e-4f9f-ae7c-7146c89115dd" />
+
+
+
 
 **Event Details:**
 
@@ -218,9 +225,12 @@ PECmd.exe -f "C:\Users\LetsDefend\Desktop\ChallengeFile\C\Windows\prefetch"
          --csv "C:\output"
 ```
 
-> 📸 *Screenshot: PECmd command execution showing file parsing and CSV generation*
 
-> 📸 *Screenshot: Investigation.csv results showing executable names, run counts, and timestamps*
+> <img width="971" height="186" alt="9" src="https://github.com/user-attachments/assets/34aa401b-673d-41e6-b621-1646b5409448" />
+
+> <img width="697" height="85" alt="3" src="https://github.com/user-attachments/assets/f72de25f-4447-440e-96b1-9be00f7a2db3" />
+
+
 
 **Execution Timeline Reconstructed:**
 
@@ -290,7 +300,8 @@ The prefetch showed BITSADMIN execution, but the actual download mechanism appea
 
 **PowerShell Execution Log (Event ID 4104 — Script Block Logging):**
 
-> 📸 *Screenshot: PowerShell console showing Invoke-WebRequest command with URI pointing to http://192.168.110.129/SharpHound.exe*
+>  <img width="909" height="475" alt="4" src="https://github.com/user-attachments/assets/59e2c319-b05d-4a1b-beff-2952cc3f382a" />
+
 
 ```
 Timestamp:             2024-10-05 15:14:55 UTC
@@ -355,7 +366,8 @@ The MFT analysis confirmed the malicious file was successfully written to disk.
 
 **Using MFT Explorer to examine file creation:**
 
-> 📸 *Screenshot: MFT Explorer showing folder tree on left, SharpHound.exe highlighted in results on right with creation timestamps visible*
+> <img width="1020" height="493" alt="5" src="https://github.com/user-attachments/assets/e8495c6c-4643-4c02-852e-cb0cab8023ce" />
+
 
 ```
 File Details:
@@ -395,7 +407,7 @@ Flags:
 > ### 🔎 $FILE_NAME vs $STANDARD_INFORMATION Timestamps
 > Every NTFS file has TWO timestamp records:
 >
-> **$FILE_NAME (FN)** — Set by OS kernel when file written to disk
+> **$FILE_NAME  ** — Set by OS kernel when file written to disk
 > - Extremely difficult to forge (requires direct MFT modification)
 > - Most reliable forensic timestamp
 > - Persists in MFT even if file is deleted
@@ -425,7 +437,8 @@ Before executing the malware, the attacker modified Windows Defender settings to
 
 **PowerShell Log Analysis:**
 
-> 📸 *Screenshot: Event Viewer showing Event ID 403 with description showing "Engine state is changed from Available to Stopped" and HostApplication field showing Add-MpPreference command*
+> <img width="1084" height="567" alt="888" src="https://github.com/user-attachments/assets/50054194-0882-4670-a877-69ca071e204c" />
+
 
 ```
 Event ID:              403 (Engine Lifecycle - Engine Stopped)
@@ -495,7 +508,8 @@ T1562.001 → Impair Defenses: Disable or Modify Tools
 
 **System Event Log Analysis:**
 
-> 📸 *Screenshot: Event Viewer showing Event ID 5007 (Warning) with registry key modification details showing C:\Windows\Temp exclusion added*
+> <img width="944" height="417" alt="8" src="https://github.com/user-attachments/assets/b287cf0f-6eff-43b7-92b2-04688daaf61f" />
+
 
 ```
 Event ID:              5007 (Defender Config Changed)
@@ -577,7 +591,14 @@ Despite the defense evasion setup, Windows Defender detected the file. However, 
 
 **From Investigation CSV (Image 4):**
 
-> 📸 *Screenshot: CSV spreadsheet showing executable names, run counts, last run dates - SharpHound.EXE highlighted showing Last Run timestamp*
+> <img width="971" height="186" alt="9" src="https://github.com/user-attachments/assets/a7ec6e68-cc68-4f13-ba02-968f6d13d484" />
+
+> <img width="880" height="210" alt="99" src="https://github.com/user-attachments/assets/5916720d-4d70-420d-a54f-d7c0a7b49e49" />
+
+> <img width="984" height="204" alt="999" src="https://github.com/user-attachments/assets/8a71842d-7495-4439-b4ad-5d5c769e4d7b" />
+
+> <img width="747" height="280" alt="9999" src="https://github.com/user-attachments/assets/f59d83c1-a437-4d77-b8e0-33d03f9cecbe" />
+
 
 ```
 From Investigation.csv Analysis:
@@ -645,7 +666,8 @@ Although the attacker successfully executed SharpHound, Windows Defender detecte
 
 **Windows Defender Operational Log:**
 
-> 📸 *Screenshot: Event Viewer showing Event ID 1116 (Warning) with threat name VirTool:MSIL/SharpHound.AIMTB and detection details*
+>  <img width="1040" height="595" alt="6" src="https://github.com/user-attachments/assets/86cbc652-7b96-461b-9b43-5124c73db553" />
+
 
 ```
 Event ID:              1116 (Malware Detected)
@@ -711,7 +733,8 @@ T1087 → Account Discovery
 
 **Windows Defender Operational Log — Protective Action:**
 
-> 📸 *Screenshot: Event ID 1117 (Information) showing quarantine action completed with success code 0x00000000*
+>  <img width="1023" height="584" alt="66" src="https://github.com/user-attachments/assets/8d28f59f-6ef8-4a31-a4cc-c7ff8a181c11" />
+
 
 ```
 Event ID:              1117 (Action Taken)
@@ -782,7 +805,11 @@ Either way: LDAP enumeration data was collected before quarantine
 
 **Windows Defender Support Log (MPLog):**
 
-> 📸 *Screenshot: Notepad showing MPLog file with SharpHound detection entry including SHA1 hash*
+> <img width="882" height="514" alt="7" src="https://github.com/user-attachments/assets/1af40e04-bdc4-422f-9384-c0568c196b99" />
+
+> <img width="981" height="592" alt="77" src="https://github.com/user-attachments/assets/b28920ab-23a5-418e-9641-8d9c895bb5aa" />
+
+
 
 ```
 Log Entry Analysis:
@@ -827,7 +854,8 @@ Minutes after SharpHound executed, the attacker downloaded BloodHound.zip — th
 
 **Windows Defender Detection of Secondary Tool:**
 
-> 📸 *Screenshot: Event Viewer showing second Event ID 1116 occurrence with different threat - Trojan:Win32/Ceprolad.A and BloodHound.zip reference*
+> <img width="1041" height="521" alt="100" src="https://github.com/user-attachments/assets/37abc4a7-4afe-47e3-9df4-b88ede609289" />
+
 
 ```
 Event ID:              1116 (Malware Detected - Second Instance)
@@ -910,7 +938,8 @@ T1550 → Use Alternate Authentication Material
 
 **File System Metadata:**
 
-> 📸 *Screenshot: MFT Explorer showing folder contents with BloodHound.zip file visible, created in Windows\Temp\*
+> <img width="1023" height="273" alt="110" src="https://github.com/user-attachments/assets/16d10e3b-9e04-4936-87fd-ee6100999094" />
+
 
 ```
 File Details:
@@ -949,7 +978,8 @@ To confirm the malware family and threat classification, we submitted the SharpH
 
 **VirusTotal Online Threat Database:**
 
-> 📸 *Screenshot: VirusTotal showing SharpHound.exe analysis with 61/69 detection rate, threat classifications, and vendor analysis*
+>  <img width="1357" height="673" alt="45" src="https://github.com/user-attachments/assets/54266267-3ee0-4943-a45a-f8f477d9dbe1" />
+
 
 ```
 Hash Information:
