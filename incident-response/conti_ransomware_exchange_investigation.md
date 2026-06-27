@@ -155,7 +155,8 @@ Process Details:
   ParentProcessId:  7408
 ```
 
-> 📸 *Screenshot: Sysmon event showing cmd.exe creation with abnormal path in Documents folder*
+> <img width="814" height="559" alt="1" src="https://github.com/user-attachments/assets/7662c81a-4cb9-479a-93f5-ebea52754161" />
+
 
 ### Forensic Analysis
 
@@ -225,7 +226,8 @@ Injection Details:
   GrantedAccess:    0x1F3FFF (full memory access)
 ```
 
-> 📸 *Screenshot: Sysmon Event 8 showing injection from unsecapp.exe into lsass.exe with full access flags*
+> <img width="1363" height="329" alt="5" src="https://github.com/user-attachments/assets/ba58bbec-0cc5-4ecc-a63a-dc7d34dd4a40" />
+
 
 **Forensic Significance of lsass.exe Target:**
 
@@ -300,48 +302,6 @@ Result: DUAL PERSISTENCE
   - Even if one is discovered, other remains active
 ```
 
-### Memory Access Event (Sysmon Event 10)
-
-**Search Command (Splunk):**
-```spl
-source="sysmon" EventCode=10 TargetImage="*lsass.exe*"
-| search GrantedAccess IN (0x1FFFFF, 0x1F3FFF)
-| table _time, SourceImage, TargetImage, GrantedAccess, CallTrace
-```
-
-**Findings:**
-
-```
-Event Type:         ProcessAccess (Sysmon Event 10)
-Timestamp:          2021-09-08 19:55:30+ UTC
-
-Access Details:
-  SourceImage:      C:\Windows\System32\wbem\unsecapp.exe
-  TargetImage:      C:\Windows\System32\lsass.exe
-  GrantedAccess:    0x1FFFFF (PROCESS_ALL_ACCESS - full control)
-  AccessMask:       Read, Write, Execute
-  CallTrace:        ntdll.dll → kernel32.dll → CreateRemoteThread
-```
-
-**What 0x1FFFFF Means:**
-
-```
-GrantedAccess: 0x1FFFFF = PROCESS_ALL_ACCESS
-
-This flag indicates the accessing process has:
-  ✅ PROCESS_QUERY_LIMITED_INFORMATION (read process info)
-  ✅ PROCESS_QUERY_INFORMATION (detailed info)
-  ✅ PROCESS_VM_READ (read memory)
-  ✅ PROCESS_VM_WRITE (write memory)
-  ✅ PROCESS_VM_OPERATION (modify memory)
-  ✅ PROCESS_CREATE_THREAD (create threads)
-  ✅ PROCESS_TERMINATE (kill process)
-  ✅ PROCESS_SUSPEND_RESUME (pause process)
-
-Translation: Complete, unrestricted access to lsass.exe
-```
-
-> 📸 *Screenshot: Sysmon Event 10 showing ProcessAccess with 0x1FFFFF flags*
 
 ### What Happened at This Point
 
@@ -478,7 +438,8 @@ Request 6 (CRITICAL):
   Response:       File attribute removed
 ```
 
-> 📸 *Screenshot: HTTP access logs showing multiple POST requests to i3efPctK1cz4.aspx with command parameters*
+> <img width="794" height="500" alt="8" src="https://github.com/user-attachments/assets/eaf14dda-3846-4073-8de8-64069d7be02e" />
+
 
 ### What is a Web Shell?
 
@@ -590,7 +551,8 @@ Program Files\Microsoft\Exchange Server\V15\FrontEnd\
 HttpProxy\owa\auth\i3efPctK1cz4.aspx
 ```
 
-> 📸 *Screenshot: Splunk showing CommandLine field with attrib.exe -r command targeting web shell file*
+> <img width="1166" height="459" alt="9" src="https://github.com/user-attachments/assets/86e5c27f-6ef6-4b43-9704-39052a45e765" />
+
 
 ### Command Analysis
 
@@ -679,7 +641,8 @@ Account Details:
   UserAccountControl: Enabled, Normal account
 ```
 
-> 📸 *Screenshot: Event Viewer showing 4720 event with new account creation for "securityninja"*
+> <img width="617" height="181" alt="4" src="https://github.com/user-attachments/assets/f2ee11c7-fddf-4218-94db-cde338a89847" />
+
 
 #### Event ID 4722: User Added to Group
 
@@ -712,8 +675,6 @@ net localgroup "Remote Desktop Users" "securityninja" /add
 
 net localgroup administrators securityninja /add
 ```
-
-> 📸 *Screenshot: Command prompt showing net.exe commands for account creation (from previous analysis)*
 
 ### User Account Analysis
 
@@ -814,7 +775,8 @@ Location 11: C:\Users\Default\AppData\readme.txt
 Location 12-18: [Other user profile locations]
 ```
 
-> 📸 *Screenshot: Splunk search results showing TargetFilename table with 18 readme.txt files*
+> <img width="1185" height="560" alt="3" src="https://github.com/user-attachments/assets/6e7d7324-fe53-4c25-836f-2c042d011274" />
+
 
 ### What README.TXT Contains
 
