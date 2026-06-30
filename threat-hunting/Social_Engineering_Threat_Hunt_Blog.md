@@ -35,7 +35,7 @@ I leaned back in my chair. This wasn't a detection. This wasn't an alert. This w
 
 The manager had a point. Social engineering is the weakest link in cybersecurity. It bypasses all the firewalls, intrusion detection systems, and EDR solutions. A single employee clicking a malicious link can compromise an entire organization.
 
-"Let's hunt," I said, opening my Splunk console.
+"Let's hunt," I said, opening my Wazuh console.
 
 But first, I needed to understand what I was looking for.
 
