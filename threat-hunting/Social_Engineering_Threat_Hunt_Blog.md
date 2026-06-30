@@ -66,7 +66,8 @@ I logged into our Threat Intelligence Platform (TIP) and started searching for i
 
 Our real domain is **riverkidscorp.com**. I searched our TIP for any suspicious domain registrations that might be phishing attempts targeting our employees.
 
-> 📸 *Screenshot: TIP search for domains containing "riverk"*
+> <img width="1340" height="628" alt="1" src="https://github.com/user-attachments/assets/1654fe06-ea47-4533-928e-0fab28e1e198" />
+
 
 ---
 
@@ -105,7 +106,8 @@ The question: **Did anyone receive an email from this fake domain?**
 
 I searched our email logs for any messages from the phishing domain.
 
-> 📸 *Screenshot: Email security platform search results*
+> <img width="1131" height="431" alt="2" src="https://github.com/user-attachments/assets/d206a1c1-e09d-4cfb-bee4-069a15a80a24" />
+
 
 ---
 
@@ -211,7 +213,8 @@ Time Range: Aug 1-7, 2024
 Expected Result: If anyone clicked the link, their DNS query would show up here
 ```
 
-> 📸 *Screenshot: Wazuh DNS query search results — 1 hit found*
+> <img width="1363" height="561" alt="3" src="https://github.com/user-attachments/assets/4f6bfc4a-2d01-40dd-8f9c-978cdd1201a2" />
+
 
 ---
 
@@ -288,7 +291,11 @@ This is where the story takes a turn.
 
 I searched the firewall logs for any outbound connections from mike's machine to the attacker's IP address: **111.222.111.222**
 
-> 📸 *Screenshot: Fortigate firewall logs filtered by destination IP 111.222.111.222*
+> <img width="1351" height="581" alt="4" src="https://github.com/user-attachments/assets/f1fac708-0e54-412b-aeaf-dc8e613f66c3" />
+
+> <img width="1128" height="561" alt="5" src="https://github.com/user-attachments/assets/e3d1f342-710c-49d2-9ba5-dbe97813d84e" />
+
+
 
 ---
 
