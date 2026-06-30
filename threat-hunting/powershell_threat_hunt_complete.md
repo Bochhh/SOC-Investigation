@@ -37,7 +37,7 @@ The manager's message was clear: "We've seen this technique attributed to APT-SK
 
 This was a classic threat hunting scenario. No alert had triggered. No detection had fired. Just a hypothesis based on threat intelligence and a request to validate it: **Are we being targeted by APT-SKR-41? Are they using PowerShell encoded commands in our environment?**
 
-I took a breath and opened Splunk.
+I took a breath and opened Wazuh .
 
 "Let's find out," I said.
 
