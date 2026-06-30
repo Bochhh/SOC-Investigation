@@ -61,7 +61,7 @@ Let the hunt begin.
 
 ## 🔍 Phase 1: Setting the Hunt Scope
 
-I started by defining my search parameters in Splunk. The manager had mentioned that threat intelligence pointed to early August activity, so I set my timeline:
+I started by defining my search parameters in Wazuh . The manager had mentioned that threat intelligence pointed to early August activity, so I set my timeline:
 
 **Hunt Parameters:**
 ```
@@ -73,7 +73,8 @@ Focus: CommandLine arguments containing -EncodedCommand
 
 With the timeline locked, I was ready to search. This 7-day window would show me all PowerShell activity during the period when APT-SKR-41 was active.
 
-> 📸 *Screenshot: Splunk search parameters set for August 1-7 timeframe*
+> <img width="1363" height="637" alt="1" src="https://github.com/user-attachments/assets/923e6f31-640b-4fe0-a904-c38ef73ba319" />
+
 
 ---
 
@@ -81,7 +82,7 @@ With the timeline locked, I was ready to search. This 7-day window would show me
 
 Now I needed to narrow down the noise. Splunk was returning thousands of events. I needed to focus on just PowerShell.
 
-I navigated through the Splunk results and found the field that would reveal everything: **`data.win.eventdata.image`**
+I navigated through the Wazuh  results and found the field that would reveal everything: **`data.win.eventdata.image`**
 
 This field shows the actual executable that was launched on each system. I could see various processes — explorer.exe, svchost.exe, cmd.exe — but I needed only PowerShell.
 
@@ -133,7 +134,8 @@ Why it matters:
 
 I set up the table display to show both fields together. Every PowerShell execution would now be visible with its full command line arguments.
 
-> 📸 *Screenshot: Table view with data.win.eventdata.image and data.win.eventdata.commandLine columns*
+> <img width="1350" height="604" alt="2" src="https://github.com/user-attachments/assets/d77f838b-72e7-4e03-9a5e-b6ebac99d01e" />
+
 
 ---
 
@@ -173,7 +175,8 @@ Execution Context:
   Parent User:        DC-SERVER-01\Administrator
 ```
 
-> 📸 *Screenshot: The suspicious PowerShell command line with -EncodedCommand parameter highlighted*
+> <img width="1096" height="555" alt="3" src="https://github.com/user-attachments/assets/4854e824-e514-4ece-81a4-819d62a6376c" />
+
 
 ---
 
@@ -279,7 +282,8 @@ Complete action:
   Ready for execution
 ```
 
-> 📸 *Screenshot: CyberChef showing Base64 input and decoded output revealing malware download command*
+> <img width="1361" height="608" alt="4" src="https://github.com/user-attachments/assets/65cb0611-ae30-4e57-b515-9c738f06fe4c" />
+
 
 **This is confirmed malicious activity. The hypothesis is becoming reality.**
 
@@ -333,8 +337,6 @@ Malware behavior:
 Multiple identical executions = Strong malware indicator
 ```
 
-> 📸 *Screenshot: Splunk logs showing multiple PowerShell executions with identical timestamps, all with encoded commands*
-
 **The pattern is becoming clear. This is not a one-time admin task. This is coordinated malicious activity.**
 
 ---
@@ -350,6 +352,9 @@ I took the IP and searched our internal threat intelligence system.
 ### **Threat Intelligence Correlation:**
 
 I searched our TI platform for `12.68.1.100` and got a hit immediately.
+
+> <img width="1091" height="499" alt="5" src="https://github.com/user-attachments/assets/67eb7c3b-99ff-471c-abd8-5701af4d4e96" />
+
 
 **Results:**
 
@@ -398,6 +403,9 @@ Tag: APT-SKR-41
 Date: August 1, 2024, 06:14 PM UTC
 ```
 
+>  <img width="1025" height="517" alt="6" src="https://github.com/user-attachments/assets/1aeda7fe-4a61-4b1e-a0a9-1830ca58f68e" />
+
+
 **This hash is the SHA1 of the malware binary that was downloaded.**
 
 Now I could search for this hash in my SIEM to find exactly which systems were infected.
@@ -434,7 +442,8 @@ Parent Process: explorer.exe
 Parent User: Administrator
 ```
 
-> 📸 *Screenshot: SIEM query showing the single malware file execution with full metadata*
+>  <img width="1365" height="440" alt="7" src="https://github.com/user-attachments/assets/29133e3b-b588-4fed-9dee-9597c1859a14" />
+
 
 ### **Critical Finding:**
 
@@ -474,6 +483,9 @@ Filter: Sysmon Event ID 3 (Network Connection)
 Image: C:\Windows\Temp\malware.exe
 Timeline: August 1-7, 2024
 ```
+
+> <img width="1365" height="370" alt="8" src="https://github.com/user-attachments/assets/3333a137-0ed3-4579-abd3-c266cdc7ba60" />
+
 
 ### **What Sysmon Event ID 3 Shows:**
 
@@ -525,7 +537,8 @@ Connection Details:
   Process ID: 5008
 ```
 
-> 📸 *Screenshot: Network connection events showing malware communicating to external C2 server*
+> <img width="1100" height="560" alt="9" src="https://github.com/user-attachments/assets/b0343e04-a4da-44c2-9e5a-972c634edd94" />
+
 
 ### **What This Means:**
 
@@ -580,7 +593,8 @@ Connection Attempt 2:
   (Same pattern, also blocked)
 ```
 
-> 📸 *Screenshot: Firewall logs showing C2 connection attempts being DENIED and logged*
+> <img width="1107" height="475" alt="10" src="https://github.com/user-attachments/assets/ce5bdd27-24b8-477f-8f52-82160e7eaa27" />
+
 
 ### **Critical Finding — Defense in Action:**
 
@@ -838,9 +852,3 @@ Now it's time for incident response to take over and remove the threat completel
 
 ---
 
-*Threat Hunt conducted by: Moetez Bouchlaghem*
-*SOC Threat Hunter | SOC-Investigation-Lab | GhnimiWael*
-*Hunt Period: August 1-7, 2024*
-*Hunt Status: COMPLETE*
-*Escalation: CRITICAL — Incident Response Engaged*
-*Threat Status: ACTIVE BUT CONTAINED (C2 blocked by firewall)*
