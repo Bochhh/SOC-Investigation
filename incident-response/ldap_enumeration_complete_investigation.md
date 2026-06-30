@@ -1300,6 +1300,4 @@ Key takeaways:
 
 ---
 
-*Writeup by: Moetez Bouchlaghem*
-*SOC-Investigation-Lab | GhnimiWael*
-*Lab Source: https://app.letsdefend.io/challenge/ldap-enumeration*
+
