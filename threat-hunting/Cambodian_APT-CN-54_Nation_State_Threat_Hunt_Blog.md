@@ -39,7 +39,7 @@ I read it carefully. The manager wasn't panicking. This wasn't an incident repor
 
 The hypothesis was clear: **Sophisticated attacks from Cambodia are possible. Let's find out if it's happening.**
 
-I opened Splunk and set the time range: August 1-7, 2024.
+I opened wazuh and set the time range: August 1-7, 2024.
 
 "Let's see what Cambodia has been trying," I said.
 
@@ -73,7 +73,11 @@ Then I filtered on a simple but powerful field: **`data.srccountry`** — Source
 
 I searched for Cambodia.
 
-> 📸 *Screenshot: Wazuh search filtered for data.srccountry: Cambodia*
+> <img width="1361" height="604" alt="1" src="https://github.com/user-attachments/assets/b4e75920-4ce9-4b52-89c0-c32204b9e1d2" />
+
+> <img width="1150" height="514" alt="2" src="https://github.com/user-attachments/assets/46b6b2af-6172-4037-815d-1fbb1fb9a529" />
+
+
 
 ---
 
@@ -194,7 +198,14 @@ At this point, I had confirmed reconnaissance activity from Cambodia. But the cr
 
 I shifted to our Threat Intelligence Platform and searched for the three Cambodian IPs against our threat feeds.
 
-> 📸 *Screenshot: TIP search for Cambodian IPs with threat intelligence tags*
+> <img width="1020" height="467" alt="3" src="https://github.com/user-attachments/assets/11f7da83-4692-48cb-8bad-bf9820b803ca" />
+
+> <img width="1045" height="460" alt="4" src="https://github.com/user-attachments/assets/0226bf89-13f0-4766-944e-4a689434580c" />
+
+> <img width="1055" height="514" alt="5" src="https://github.com/user-attachments/assets/28075838-015f-4ed4-aff8-093c1b25c329" />
+
+
+
 
 ---
 
@@ -239,7 +250,8 @@ I dug deeper into the TIP to understand the full APT-CN-54 attack infrastructure
 
 I searched for all indicators tagged with APT-CN-54.
 
-> 📸 *Screenshot: TIP search for APT-CN-54 tag showing complete infrastructure*
+> <img width="1114" height="468" alt="6" src="https://github.com/user-attachments/assets/9ef9fd75-0723-49d4-bc1c-7b03d3f3bed1" />
+
 
 ---
 
@@ -258,7 +270,7 @@ The threat intelligence revealed the **entire attack infrastructure** — not ju
 ### **Indicator #4: External Command & Control Server** 🚨
 
 ```
-IP:                 72.51.177.88
+IP:                 22.51.177.88
 Detection Date:     Aug 02, 2024 @ 04:03 PM
 Attribution:        APT-CN-54
 Location:           United States (likely proxied/hosting provider)
@@ -313,7 +325,7 @@ Reconnaissance Layer (Cambodia):
   └─ Status: ACTIVE (10 probes detected)
 
 Command & Control Layer:
-  └─ IP: 72.51.177.88 (external, likely US hosting)
+  └─ IP: 22.51.177.88 (external, likely US hosting)
   └─ Purpose: Malware control, data exfiltration
   └─ Status: PREPARED (detected in TIP)
 
@@ -333,11 +345,16 @@ This is NATION-STATE level capability.
 
 The reconnaissance phase was historical (Aug 5, past tense). But the TIP infrastructure suggested **ongoing exploitation**.
 
-I searched firewall logs for the C2 server IP: **72.51.177.88**
+I searched firewall logs for the C2 server IP: *22.51.177.88**
 
 **The question:** Is the C2 server actively connecting to our systems right now?
 
-> 📸 *Screenshot: Firewall logs showing connections to C2 server*
+> <img width="1323" height="475" alt="7" src="https://github.com/user-attachments/assets/5323a5d5-8575-41c1-af24-5b54700ce2f4" />
+
+
+> <img width="867" height="562" alt="8" src="https://github.com/user-attachments/assets/a5d58787-a48a-4b17-a9af-8896be28ea99" />
+
+
 
 ---
 
@@ -351,7 +368,7 @@ This is the **exploitation phase in real-time**.
 
 ```
 Timestamp:          Aug 5, 2024 @ 23:39:00 UTC
-Source:             72.51.177.88 (APT-CN-54 C2 Server)
+Source:             22.51.177.88 (APT-CN-54 C2 Server)
 Source Port:        13772 🚨 (SAME PORT AS RECONNAISSANCE!)
 Destination:        172.16.8.5 (Target system from reconnaissance)
 Destination Port:   443 (HTTPS)
@@ -384,7 +401,7 @@ In those 19 minutes, what could happen?
 
 ```
 Timestamp:          Aug 5, 2024 @ 23:58:19 UTC
-Source:             72.51.177.88 (APT-CN-54 C2 Server)
+Source:             22.51.177.88 (APT-CN-54 C2 Server)
 Source Port:        48952 (different port, retry attempt)
 Destination:        172.16.8.5
 Destination Port:   443
@@ -419,7 +436,8 @@ The C2 connection window (23:39-23:58) was critical. What happened during those 
 
 I searched for the phishing domain in our logs to see if systems tried to connect to it.
 
-> 📸 *Screenshot: Search for phishing domain office365.online.secureconnection.top*
+> <img width="1350" height="486" alt="9" src="https://github.com/user-attachments/assets/6b0d675f-ef7b-47a9-87a1-3ed471cdaa7c" />
+
 
 ---
 
@@ -524,7 +542,7 @@ Stage 2: INITIAL ACCESS (LIKELY ✓)
   Result:    System compromised, attacker has foothold
 
 Stage 3: COMMAND & CONTROL (CONFIRMED ✓)
-  C2 Server: 72.51.177.88
+  C2 Server: 22.51.177.88
   First Attempt: ALLOWED (19-minute active window)
   Second Attempt: BLOCKED by IDS VID52276
   Result:    Attacker established remote control
@@ -1015,9 +1033,6 @@ The hunt revealed the truth. Now comes the hard work of cleaning up and strength
 ---
 
 *Threat Hunt conducted by: Moetez Bouchlaghem*  
-*SOC Threat Hunter | SOC-Investigation-Lab | GhnimiWael*  
-*Hunt Period: August 1-7, 2024*  
-*Hunt Status: COMPLETE*  
 *Hypothesis Status: CONFIRMED — CRITICAL BREACH DETECTED*  
 *Threat Actor: APT-CN-54 (Cambodia-attributed)*  
 *Systems Compromised: 172.16.8.5 (and others under investigation)*  
