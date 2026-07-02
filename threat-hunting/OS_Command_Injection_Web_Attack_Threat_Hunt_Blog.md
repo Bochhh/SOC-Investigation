@@ -75,7 +75,11 @@ The time scope: August 8-13, 2024.
 
 **The question:** Are there any documented command injection exploitation attempts against our network?
 
-> 📸 *Screenshot: Wazuh search filtered for IPS command injection signatures*
+> <img width="1354" height="606" alt="11" src="https://github.com/user-attachments/assets/4bf70638-f8ef-4d84-9532-952fea75b9bb" />
+
+> <img width="1127" height="562" alt="2" src="https://github.com/user-attachments/assets/bf27d2e8-1689-4b82-be76-676e1b2a8d93" />
+
+
 
 ---
 
@@ -226,7 +230,8 @@ Three of the IPs (47.236.192.205, .208, .209) appeared to be proxy/botnet infras
 
 I searched my Threat Intelligence Platform for this IP.
 
-> 📸 *Screenshot: TIP search for source IP 5.6.12.3*
+> <img width="1154" height="489" alt="3" src="https://github.com/user-attachments/assets/67a0883b-b068-43b9-8ef8-e90687de546c" />
+
 
 ---
 
@@ -262,6 +267,9 @@ And worse: **They're succeeding.**
 ---
 
 ## 📊 Phase 3: IPS Actions — Understanding Defense Response
+
+> <img width="1121" height="313" alt="4" src="https://github.com/user-attachments/assets/f214d839-0222-46a2-83b5-6ae3756595b1" />
+
 
 Now I needed to understand the complete picture. The IPS detected all 4 attacks. But did it **block** them?
 
@@ -319,7 +327,8 @@ To answer this, I needed to check the **endpoint itself** — the Windows system
 
 I searched for Sysmon **Event ID 1 (Process Creation)** events around the time of the attack, looking for the NetCat command execution.
 
-> 📸 *Screenshot: Sysmon Event ID 1 showing nc.exe process creation*
+> <img width="1024" height="555" alt="4 5" src="https://github.com/user-attachments/assets/1e7c4534-bc15-48c4-a013-1b2e4fb8005f" />
+
 
 ---
 
@@ -433,7 +442,8 @@ The Sysmon log proved NetCat executed. But did it successfully connect to the at
 
 To confirm, I checked the **firewall logs** for outbound connections from 10.10.10.99 to 46.88.3.4 on port 443.
 
-> 📸 *Screenshot: Firewall logs showing outbound connection to C2 server*
+> <img width="1059" height="558" alt="5" src="https://github.com/user-attachments/assets/02cee675-cd5e-44fa-9f1e-4e65c3fb3866" />
+
 
 ---
 
@@ -1008,11 +1018,6 @@ The Incident Response team now owns this incident. Their mission:
 ---
 
 *Threat Hunt conducted by: Moetez Bouchlaghem*  
-*SOC Threat Hunter | SOC-Investigation-Lab | GhnimiWael*  
-*Hunt Period: August 8-13, 2024*  
-*Hunt Status: COMPLETE*  
-*Hypothesis Status: CONFIRMED — CRITICAL WEB APP COMPROMISE DETECTED*  
-*Threat Actor: APT-ZF-41*  
 *System Compromised: LAB19DC (10.10.10.99)*  
 *Vulnerability: CWE-78 (OS Command Injection) in news_page.php*  
 *C2 Server: 46.88.3.4:443*  
