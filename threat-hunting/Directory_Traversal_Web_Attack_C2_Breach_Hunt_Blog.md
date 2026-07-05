@@ -81,7 +81,11 @@ Time Range: Aug 8-13, 2024
 
 **The question:** Are there any directory traversal exploitation attempts being blocked or detected by our WAF?
 
-> 📸 *Screenshot: Wazuh search filtered for FortiWeb directory traversal signatures*
+> <img width="1361" height="587" alt="1" src="https://github.com/user-attachments/assets/81625ab6-1c9d-4d5e-85f2-0a743b40cf19" />
+
+><img width="1109" height="453" alt="2" src="https://github.com/user-attachments/assets/faea13da-aae7-46a3-84be-d4c9ef7d2b99" />
+
+
 
 ---
 
@@ -253,7 +257,8 @@ Two different source IPs suggested either:
 
 I searched my Threat Intelligence Platform for the primary attacker IP: **16.61.7.181**
 
-> 📸 *Screenshot: TIP search for source IP 16.61.7.181*
+> <img width="1130" height="468" alt="3" src="https://github.com/user-attachments/assets/9c3a6ac4-bedf-436d-aa7f-884e1311161f" />
+
 
 ---
 
@@ -276,6 +281,10 @@ Confidence:         HIGH (documented in threat feeds)
 This wasn't random attackers. This was a **KNOWN, DOCUMENTED threat actor group** actively targeting web applications.
 
 But the discovery didn't stop there. My TIP search revealed **more infrastructure** associated with APT-LL-23:
+
+
+> <img width="1142" height="447" alt="4" src="https://github.com/user-attachments/assets/e5ea526e-b48d-46ee-b0e3-5f1ef97dd70b" />
+
 
 ```
 Related Infrastructure Found:
@@ -306,7 +315,8 @@ I pivoted back to my SIEM and searched for **any network connections from our in
 
 **The question:** Is any of our workstations or servers communicating with this known C2 infrastructure?
 
-> 📸 *Screenshot: Wazuh search for outbound connections to 101.203.172.3*
+> <img width="1362" height="528" alt="5" src="https://github.com/user-attachments/assets/37689c42-ea54-44bf-98cc-8c3f56a2fdbf" />
+
 
 ---
 
