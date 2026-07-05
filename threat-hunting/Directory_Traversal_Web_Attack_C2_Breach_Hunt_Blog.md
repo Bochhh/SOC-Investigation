@@ -889,7 +889,6 @@ The Incident Response team now owns this incident. Their mission:
 ---
 
 *Threat Hunt conducted by: Moetez Bouchlaghem*  
-*SOC Threat Hunter | SOC-Investigation-Lab | GhnimiWael*  
 *Hunt Period: August 8-13, 2024*  
 *Hunt Status: COMPLETE*  
 *Hypothesis Status: CONFIRMED — WEB APP COMPROMISE & C2 DETECTED*  
